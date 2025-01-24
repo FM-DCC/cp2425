@@ -151,5 +151,5 @@ Distributed evaluation will include both modelling (EM) and program implementati
    
 
 
-Edit the content of this page [here](https://github.com/FM-DCC/pc2324/blob/main/index.md).
+Edit the content of this page [here](https://github.com/FM-DCC/cp2425/blob/main/index.md).
 {: .editNote}
