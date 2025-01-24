@@ -1,0 +1,887 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage{etex} % fixes new-dimension error
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+
+\usepackage{graphicx,amsmath}
+\usepackage{stmaryrd} % cf. interleave
+\usepackage{booktabs}
+\usepackage{amscd}
+\usepackage{multicol}
+\usepackage[absolute,overlay]{textpos}
+\usepackage{alltt}
+\usepackage{proof}
+\usepackage{subcaption}
+\usepackage{tikz}
+\usepackage{tikz-cd}
+\usepackage[new]{old-arrows}
+\usepackage[all]{xy}
+\usepackage{pgfplots}
+\usepackage{textcomp}
+\usepackage{cancel}
+
+\input{src/macros/macros}
+%-------------- template --------------------------------------------------
+\input{src/macros/beamerconf}
+%----------------------------------------------------------------------------
+
+\begin{document}
+
+\setLecture{4}{Basic building blocks of concurrency}
+
+
+\section{Overview}
+
+\begin{frame}{We are here}
+
+  \vspace*{-2mm}
+
+  \begin{block}{Blocks of sequential code running concurrently and sharing memory:}
+    
+  \begin{itemize}
+    \item What is Scala?
+    \item Concurrency in Java and its memory model
+    \alert{\item Basic concurrency blocks and libraries}
+    % \item Futures and promises
+    \item \textcolor{gray}{\emph{Futures and Promises}}
+    \item \textcolor{gray}{\emph{Data-Parallel Collections}}
+    \item \textcolor{gray}{\emph{Reactive Programming (Concurrently)}}
+    \item \textcolor{gray}{\emph{Software Transactional Memory}}
+    \item Actor model
+  \end{itemize}
+  \end{block}
+\end{frame}
+
+
+
+% \fromBookW[scale=0.7]{32}{98mm}{39mm}
+% \fromBook[scale=0.65]{32}{43mm}{98mm}{43mm}{39mm}
+
+% \begin{frame}[fragile]\frametitle{Current thread}
+% ~\\[-8mm]
+% \begin{columns}
+% \begin{column}{0.49\textwidth}
+% \begin{lstlisting}
+% ...
+% \end{lstlisting}
+% \end{column}
+% \begin{column}{0.49\textwidth}
+% ...
+% \end{column}
+% \end{columns}
+% \end{frame}
+
+
+\begin{frame}[t]\frametitle{What we will see}
+
+  \begin{itemize}
+    \item Tread pools: Executor and ExecutionContext
+    \item Non-blocking synchronisation -- compare-and-set (CAS)
+    \item Lazy (concurrent) values
+    \item Concurrent collections
+    \item Running OS processes
+  \end{itemize}
+
+
+\end{frame}
+
+\section{Existing thread pools in Scala}
+
+
+\begin{frame}[fragile]\frametitle{Executor interface}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.54\textwidth}
+\begin{lstlisting}[emph={executor},mathescape]
+ Executor executor = $\textit{anExecutor}$;
+ executor.execute(new RunnableTask1());
+ executor.execute(new RunnableTask2());
+ ...
+\end{lstlisting}
+\begin{lstlisting}[emph={executor}]
+import scala.concurrent._
+import java.util.concurrent.ForkJoinPool
+
+object ExecutorsCreate extends App {
+  val executor = new ForkJoinPool
+  executor.execute(new Runnable {
+    def run() = log("This task is run asynchronously.")
+  })
+  Thread.sleep(500) // not needed with fork:=false in SBT
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{itemize}
+  \item \alert{Executor:} can start a new thread, an existing one, or the current one
+  \item Abstracts from the management of threads
+  \item \structure{ExecutorService:} API that extends Executor with \code{shutdown}
+    \begin{itemize}
+      \item \code{executor.shutdown} $\to$ executes all tasks and then stops working threads
+      \item \code{executor.awaitTermination(...)} $\to$ force termination if, after a given time, the tasks are not completed
+    \end{itemize}
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Scala's \texttt{ExecutionContext}}
+~\\[-6mm]
+\begin{columns}
+\begin{column}{0.74\textwidth}
+\begin{lstlisting}[emph={execute,sleep,log,global}]
+import scala.concurrent._
+object ExecutionContextGlobal extends App {
+  val ectx = ExecutionContext.global
+  ectx.execute(new Runnable {
+    def run() = log("Running on the execution context.")
+  })
+  Thread.sleep(500)
+}
+\end{lstlisting}
+\begin{lstlisting}[emph={execute,sleep,log,global,fromExecutorService}]
+object ExecutionContextCreate extends App {
+  val pool = new forkjoin.ForkJoinPool(2)
+  val ectx = ExecutionContext.fromExecutorService(pool)
+  ectx.execute(new Runnable {
+    def run() = log("Running on the execution context again.")
+  })
+  Thread.sleep(500)
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.36\textwidth}
+\begin{itemize}
+  \item \code{scala.concurrent}: has \alert{ExecutionContext}
+  \item Similar to \structure{Executor} but more Scala specific
+  \item often used as implicit parameter
+  \item \alert{\code{global}}: default execution context (internally uses a \code{ForkJoinPool})
+  \item \code{fromExecutorService}: creates \structure{ExecutionContext} from \structure{ExecutorService}
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Simplifying the execution}
+~\\[-8mm]
+\begin{columns}[t]
+\begin{column}{0.45\textwidth}
+Similar to \structure{threads}:
+
+\begin{lstlisting}[emph={thread,run,start}]
+def thread(body: =>Unit): Thread = {
+  val t = new Thread {
+    override def run() = body
+  }
+  t.start()
+  t
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.56\textwidth}
+We now define \alert{\code{execute}}
+
+\begin{lstlisting}[emph={execute,sleep,log,global}]
+def execute(body: =>Unit) = ExecutionContext.global.execute(
+     new Runnable { def run() = body }
+)
+// For example:
+object ExecutionContextSleep extends App {
+  for (i<- 0 until 32) execute {
+    Thread.sleep(2000)
+    log(s"Task \§i completed.")
+  }
+  Thread.sleep(10000)
+}
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Avoid blocking indefinitely}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.45\textwidth}
+\begin{lstlisting}[emph={execute,sleep,log,global}]
+object ExecutionContextSleep
+       extends App {
+  for (i<- 0 until 32) execute {
+    Thread.sleep(2000)
+    log(s"Task \§i completed.")
+  }
+  Thread.sleep(10000)
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.57\textwidth}
+\begin{itemize}
+  \item \structure{Expected:} all executions terminate after 2s
+  \item \alert{Result:} only some execute after 2s %threads block forever (?!)
+  \pause\\[4mm]
+  \item Using quad-core CPU with hyper threading
+  \item \code{global} has 8 threads in the thread pool
+  \pause\\[4mm]
+  \item executes tasks in batches of 8
+  \item after 2s, 8 tasks print "completed"
+  \item after 2s more, 8 more print "completed"
+  \item \structure{sleep}: all enter a \structure{timed waiting state}
+  \pause\\[4mm]
+  \item if T1 \structure{waits} for T10 to \structure{notify}: \alert{blocks indefinitely}
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+
+\section{Lock-free programming}
+
+\begin{frame}[fragile]\frametitle{Avoiding \texttt{syncrhonized} with atomic variables}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.57\textwidth}
+\begin{itemize}
+  \item \alert{atomic variable}: memory location that supports \alert{complex linearizable operations}
+  \item ... i.e., \structure{appears to occur atomically}
+  \item \code{write} of a volatile operation:
+      \\ \structure{simple} linearizable operation
+  \item at least two reads and/or writes:
+      \\ \structure{complex} linearizable operation
+  \pause
+  \item \alert{java.util.concurrent.atomic} supports some complex ones:
+    \begin{itemize}
+       \item AtomicBoolean
+       \item AtomicInteger
+       \item AtomicLong
+       \item AtomicReference  
+    \end{itemize}
+\end{itemize}
+\end{column}
+\begin{column}{0.45\textwidth}
+~\\
+\textbf{Variation of Example 1 (\code{getUniqueId})}
+\begin{lstlisting}[emph={execute,sleep,log,global,AtomicLong,incrementAndGet}]
+import java.util.concurrent.atomic._
+
+object AtomicUid extends App {
+  private val uid =
+    new AtomicLong(0L)
+
+  def getUniqueId(): Long =
+    uid.incrementAndGet()
+  execute {
+    log(s"Uid asynchronously: \§{getUniqueId()}")
+  }
+  log(s"Got a unique id: \§{getUniqueId()}")
+}
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Compare-And-Set (CAS) -- the \alert{$\heartsuit$} of complex linearizable operations}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\begin{itemize}
+  \item CAS can be used to implement others:
+    \begin{itemize}
+      \item getAndSet
+      \item decrementAndGet
+      \item addAndGet
+    \end{itemize}
+  \item available in all atomic variables
+  \item including AtomicReference[T]
+\end{itemize}
+\end{column}
+\begin{column}{0.54\textwidth}
+~\\
+\textbf{Long-CAS conceptually equivalent to:}
+\begin{lstlisting}[emph={execute,sleep,log,Long,synchronized}]
+def compareAndSet(ov: Long, nv: Long):
+          Boolean = this.synchronized {
+    if (this.get != ov) false else {
+      this.set(nv)
+      true
+  } }
+\end{lstlisting}
+\textbf{Ref-CAS conceptually equivalent to:}
+\begin{lstlisting}[emph={execute,sleep,log,T,synchronized}]
+def compareAndSet(ov: T, nv: T):
+          Boolean = this.synchronized {
+  if (!(this.get eq ov)) false else {
+    this.set(nv)
+    true
+} }
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Using CAS}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\begin{itemize}
+  \item Back to Example~1 (getUniqueId)
+  \item Need to keep-on-trying
+  \item Looks like busy-waiting, but it is much better
+  \item Here: using (cheap) recursion instead of a loop
+\end{itemize}
+\end{column}
+\begin{column}{0.54\textwidth}
+~\\
+\begin{lstlisting}[emph={execute,sleep,log,compareAndSet,synchronized}]
+@tailrec def getUniqueId(): Long = {
+  val oldUid = uid.get
+  val newUid = oldUid + 1
+  if (uid.compareAndSet(oldUid, newUid)) newUid
+  else getUniqueId()
+}\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Lock-free programming -- really?}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\begin{itemize}
+  \item \alert{Lock-free programs}: without locks (with \code{synchronized})
+  \item Achieved using \alert{atomic variables} (and some re-trying)
+  \item No locks, no deadlocks...
+  \pause
+  \item (almost):
+    \begin{itemize}
+      \item lock-free $\Rightarrow$ use atomic variables (for atomicity)
+      \item use atomic variables $\cancel\Rightarrow$ lock-free
+    \end{itemize}
+  \pause
+\end{itemize}
+\end{column}
+\begin{column}{0.54\textwidth}
+~\\
+\begin{lstlisting}[emph={execute,sleep,log,compareAndSet,mySynchronized,AtomicBoolean}]
+object AtomicLock extends App {
+  private val lock = new AtomicBoolean(false)
+  def mySynchronized(body: =>Unit): Unit = {
+    while (!lock.compareAndSet(false, true)) {}
+    try body finally lock.set(false)
+  }
+  var count = 0
+  for (i<- 0 until 10) execute { mySynchronized { count += 1 } }
+  Thread.sleep(1000)
+  log(s"Count is: \§count")
+}
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}  
+
+
+\begin{frame}\frametitle{Lock-freedom definition}
+
+\begin{alertblock}{Lock-freedom}
+  Given a set of threads and an operation \alert{OP}.
+  \\
+  \alert{OP} is \structure{lock-free} if at least one thread always completes \alert{OP} after a finite number of steps, regardless of the speed at which different threads progress.
+\end{alertblock}
+\end{frame}
+
+
+\begin{frame}\frametitle{One more example: Concurrent filesystem}
+    \begin{itemize}
+      \item \textbf{Example 1:} getUniqueId()
+      \item \textbf{Example 2:} Logging Bank Transfers
+      \item \textbf{Example 3:} Thread pool
+      \item \textbf{Example 4:} Batman
+      \item \alert{\textbf{Example 5:} Concurrent filesystem}
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}\frametitle{Concurrent filesystem}
+  \splittwo{0.35}{0.68}{
+    \begin{block}{Filesystem API}
+      \alert{T1} is creating \structure{F}:
+      \\\alert{T2} cannot copy or delete \structure{F}
+      \\[4mm]\alert{T1}\,\&\,\alert{T2} are copying \structure{F}:
+      \\\alert{T3} cannot delete \structure{F}
+      \\[4mm]\alert{T1} is deleting \structure{F}:
+      \\\alert{T2} cannot copy nor delete \structure{F}
+    \end{block}
+  }{
+    \fromBook[scale=0.8]{79}{40mm}{121mm}{40mm}{67mm}
+  }
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Concurrent filesystem -- Scala data types}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.35\textwidth}
+    \begin{block}{Filesystem API}
+      \alert{T1} is creating \structure{F}:
+      \\\alert{T2} cannot copy or delete \structure{F}
+      \\[4mm]\alert{T1}\,\&\,\alert{T2} are copying \structure{F}:
+      \\\alert{T3} cannot delete \structure{F}
+      \\[4mm]\alert{T1} is deleting \structure{F}:
+      \\\alert{T2} cannot copy nor delete \structure{F}
+    \end{block}
+\end{column}
+\begin{column}{0.68\textwidth}
+\begin{lstlisting}[emph={execute,sleep,log,compareAndSet,State,AtomicReference}]
+class Entry(val isDir: Boolean) {
+  val state = new AtomicReference[State](new Idle)
+}
+
+sealed trait State
+class Idle extends State
+class Creating extends State
+class Copying(val n: Int) extends State
+class Deleting extends State
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Deleting and Copying}
+\alert{Deleting:} \textbf{\structure{\underline{prepare}}} (checks for permission) then \structure{delete} (perform delete)
+
+\alert{Copying:} \structure{aquire} (get permission); \structure{copy} (perform action); then \structure{release} (give permission)
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Prepare for deleting}
+
+\begin{lstlisting}[emph={execute,sleep,log,logMessage,compareAndSet,State,AtomicReference}]
+@tailrec
+private def prepareForDelete(entry: Entry): Boolean = {
+  val  s0 = entry.state.get
+  s0 match {
+    case i: Idle =>
+      if (entry.state.compareAndSet(s0, new Deleting)) true
+      else prepareForDelete(entry)
+    case c: Creating =>
+      logMessage("File currently created, cannot delete."); false
+    case c: Copying =>
+      logMessage("File currently copied, cannot delete."); false
+    case d: Deleting =>
+      false
+  }
+}
+\end{lstlisting}
+
+\cod{logMessage}: presented later -- similar to \cod{log}, but stores the log message
+\end{frame}
+
+
+\begin{frame}\frametitle{Bad copy -- the ABA problem}
+\alert{``A\structure{B}A'' problem}: two readings of the same value \alert{A} lead to believe that \structure{B} was never present (type of race condition)
+
+\bigskip
+
+Illustrated by a bad acquire-release for \cod{Copying}, using a mutable \cod{n} in:
+\\~~\alert{\texttt{Copying(\structure{var} n: Int)}}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Bad code -- acquire/release Copying}
+\label{slide:badcopy}
+    
+\begin{lstlisting}[emph={execute,sleep,log,logMessage,compareAndSet,releaseCopy}]
+def releaseCopy(e: Entry): Copying = e.state.get match {
+  case c: Copying =>
+    val nstate = if (c.n == 1) new Idle else new Copying(c.n - 1)
+    if (e.state.compareAndSet(c, nstate)) c
+    else releaseCopy(e)
+}
+\end{lstlisting}
+\begin{lstlisting}[emph={execute,sleep,log,logMessage,compareAndSet,acquireCopy}]
+def acquireCopy(e: Entry, c: Copying) = e.state.get match {
+  case i: Idle =>
+    c.n = 1
+    if (!e.state.compareAndSet(i, c)) acquireCopy(e, c)
+  case oc: Copying =>
+    c.n = oc.n + 1
+    if (!e.state.compareAndSet(oc, c)) acquireCopy(e, c)
+}
+\end{lstlisting}
+Optimization: reusing previous \cod{Copying} if possible
+\end{frame}
+
+
+% \begin{frame}\frametitle{Bad trace -- T1\&T2 release; T3\&T1 aquire -- (T2 is slow)}
+\begin{frame}\frametitle{Bad trace -- T1 release (T2 starts rel.); T3 acquires; T1 acquire; T2 releases wrongly}
+    \fromBookW{82}{151mm}{33mm}
+\end{frame}
+
+
+\begin{frame}\frametitle{Some guidelines to avoid the ABA problem}
+  \begin{itemize}
+    \item use fresh objects in \cod{AtomicReference}
+    \item use immutable objects in \cod{AtomicReference}
+    \item avoid re-assigning the same value to an atomic variable
+    \item only increment or decrement values of numeric atomic variables (if possible)
+  \end{itemize}
+
+
+\end{frame}
+
+
+\section{Lazy values}
+
+\begin{frame}[fragile]\frametitle{Lazy values can cause deadlocks}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\begin{itemize}
+  \item \alert{\textbf{lazy values:}} initialized when read for the first time
+  \item these should not depend-on/modify state (non-determinism)
+  \item code in \structure{singleton objects}: lazy execution
+  \item under the hood: first write uses a lock -- to ensure at most a thread initialises a lazy value
+  \item \structure{stack overflow} (sequential code)\\~~can become\\
+        \alert{deadlock} (concurrent code)
+
+\end{itemize}
+\end{column}
+\begin{column}{0.54\textwidth}
+~\\
+\begin{lstlisting}[emph={execute,sleep,log,compareAndSet,mySynchronized,AtomicBoolean}]
+object LazyValsCreate extends App {
+  var x = 5
+  lazy val y = x+2
+  execute {log(s"Wrk: y = $y")}
+  x = 10
+  log(s"Main: y = $y")
+  // y = 7 or 12 in both cases
+  Thread.sleep(500)
+}
+\end{lstlisting}
+\begin{lstlisting}[emph={execute,sleep,log,compareAndSet,mySynchronized,AtomicBoolean}]
+object LazyValsDeadlock extends App {
+  object A { lazy val x: Int = B.y }
+  object B { lazy val y: Int = A.x }
+  execute { B.y }
+  A.x
+}
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\section{Concurrent (mutable) collections}
+
+
+\begin{frame}[fragile]\frametitle{Default mutable collections are not concurrent}
+
+
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\begin{itemize}
+  \item Naive code: arbitrarily returns different results and exceptions
+  \item Corruption of the internal state
+  \item Possible fixes:
+    \begin{itemize}
+      \item immutable collections + atomic variables
+      \\\only<2>{\structure{(does not scale)}}
+      \item mutable collections + synchronized
+      \\\only<2>{\structure{(assuming collections do not block; may not scale)}}
+      \item dedicated libraries
+      \\\only<2>{\structure{(far better performance and scalability)}}
+    \end{itemize}
+\end{itemize}
+\end{column}
+\begin{column}{0.54\textwidth}
+~\\
+\begin{lstlisting}[emph={execute,sleep,log,compareAndSet,asyncAdd}]
+import scala.collection._
+object CollectionsBad extends App {
+  val buffer = mutable.ArrayBuffer[Int]()
+  def asyncAdd(numbers: Seq[Int]) = execute {
+    buffer ++= numbers
+    log(s"buffer = $buffer")
+  }
+  asyncAdd(0 until 10)
+  asyncAdd(10 until 20)
+  Thread.sleep(500)
+}
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[t]\frametitle{Some concurrent collections}
+    
+  \begin{itemize}
+    \item Concurrent queues 
+      \begin{itemize}
+         \item java.util.concurrent.BlockingQueue \structure{interface}
+        \item ...ArrayBlockingQueue \alert{class} (bounded)
+        \item ...LinkedBlockingQueue \alert{class} (unbounded)
+       \end{itemize} 
+    \item Concurrent Sets and Maps
+      \begin{itemize}
+        \item scala.collection.concurrent.Map \structure{trait}
+        \item java.util.concurrent.ConcurrentHashMap \alert{class}
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]\frametitle{BlockingQueue API}
+    \centering
+    \fromBook[scale=1.2]{90}{20mm}{24mm}{59mm}{172mm}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Back to Example 5: logging in our concurrent filesystem}
+    
+We will compile a queue of messages when \alert{logging} messages in our file system
+
+
+\begin{lstlisting}[emph={execute,sleep,log,compareAndSet,logger,messages,logMessage}]
+class FileSystem(...) {
+  ...
+  private val messages = new LinkedBlockingQueue[String]
+  val logger = new Thread {
+    setDaemon(true)
+    override def run() = while (true) log(messages.take())
+  }
+  logger.start()
+  def logMessage(msg: String): Unit = messages.offer(msg)
+}
+\end{lstlisting}
+
+\begin{lstlisting}[emph={execute,sleep,log,compareAndSet,logMessage}]
+...
+val fileSystem = new FileSystem(".") // to be defined later
+fileSystem.logMessage("Testing log!")
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}\frametitle{Note on iterators}
+
+\begin{itemize}
+  \item concurrentQueue.iterator
+  \item can produce inconsistent results
+  \item while traversing and modifying, the iterator can be updated
+  \item (heavier) exceptions create a copy when producing an iterator
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Example 5: files as a Map in our FileSystem}
+
+\begin{lstlisting}[emph={execute,sleep,log,ConcurrentHashMap,files,Entry,iterateFiles}]
+import scala.collection.convert.decorateAsScala._
+import java.io.File
+import org.apache.commons.io.FileUtils // needs "commons-io" in build.sbt
+
+class FileSystem(val root: String) {
+  val rootDir = new File(root)
+  val files: concurrent.Map[String, Entry] =
+    new ConcurrentHashMap().asScala
+  for (f <- FileUtils.iterateFiles(rootDir, null, false).asScala)
+    files.put(f.getName, new Entry(false))
+
+  ...
+}
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Deleting a file}
+
+Recall the \code{prepareForDelete(entry)}
+
+\begin{lstlisting}[emph={execute,sleep,log,deleteFile,files,prepareForDelete,deleteQuietly}]
+...
+def deleteFile(filename: String): Unit = {
+  files.get(filename) match {
+    case None =>
+      logMessage(s"Path '$filename' does not exist!")
+    case Some(entry) if entry.isDir =>
+      logMessage(s"Path '$filename' is a directory!")
+    case Some(entry) => execute {
+      if (prepareForDelete(entry))
+        if (FileUtils.deleteQuietly(new File(filename)))
+          files.remove(filename)
+    }
+  }
+}
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}\frametitle{Some complex linearizable methods of concurrent Map}
+    \centering
+    \fromBookW[scale=0.8]{95}{34mm}{142mm}
+
+    \splittwo{0.48}{0.48}{
+      \begin{itemize}
+        \item These use ``equals'' instead of the reference (which CAS does)
+        \item Avoid \code{null} as key or valye (often used as special values)
+      \end{itemize}
+    }{
+      \begin{itemize}
+        \item Methods \code{+=}, \code{-=}, \code{put}, \code{update}, \code{get}, \code{apply}, \code{remove} are (non-complex) linearizable
+      \end{itemize}
+    }
+    % (Using "equals" instead of the reference, as with CAS)
+\end{frame}
+
+
+\section*{Wrapping up our Filesystem (Example 5)}
+
+\begin{frame}[fragile]\frametitle{Copying in our Filesystem}
+    Recall our \alert{broken} \structure{aquireCopy}/\structure{releaseCopy} methods (\alert{ABA problem}) -- slide\ref{slide:badcopy}
+
+\begin{lstlisting}[emph={execute,sleep,log,Copying,aquire,compareAndSet}]
+@tailrec
+private def acquire(entry: Entry): Boolean = {
+  val s0 = entry.state.get
+  s0 match {
+    case _: Creating | _: Deleting =>
+      logMessage("File inaccessible, cannot copy."); false
+    case i: Idle =>
+      if (entry.state.compareAndSet(s0, new Copying(1))) true
+      else acquire(entry)
+    case c: Copying =>
+      if (entry.state.compareAndSet(s0, new Copying(c.n+1))) true
+      else acquire(entry)
+  }
+}
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Copying in our Filesystem}
+    Same CAS retry-approach for releasing.
+
+\begin{lstlisting}[emph={execute,sleep,log,Copying,release,compareAndSet}]
+@tailrec
+private def release(entry: Entry): Unit = {
+  val s0 = entry.state.get
+  s0 match {
+    case c: Creating =>
+      if (!entry.state.compareAndSet(s0, new Idle)) release(entry)
+    case c: Copying =>
+      val nstate = if (c.n == 1) new Idle else new Copying(c.n-1)
+      if (!entry.state.compareAndSet(s0, nstate)) release(entry)
+  }
+}
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Copying in our Filesystem}
+    Finally: wrapper for copying a file.
+
+\begin{lstlisting}[emph={execute,sleep,log,Copying,copyFile,acquire, release}]
+def copyFile(src: String, dest: String): Unit = {
+  files.get(src) match {
+    case Some(srcEntry) if !srcEntry.isDir => execute {
+      if (acquire(srcEntry)) try {
+        val destEntry = new Entry(isDir = false)
+        destEntry.state.set(new Creating)
+        if (files.putIfAbsent(dest, destEntry) == None) try {
+          FileUtils.copyFile(new File(src), new File(dest))
+        } finally release(destEntry)
+      } finally release(srcEntry)
+    }
+} }
+\end{lstlisting}
+\end{frame}
+
+
+
+\section{Creating and handling processes}
+
+\begin{frame}\frametitle{Beyond JVM}
+
+\begin{itemize}
+  \item \structure{So far:} run in a single JVM
+  \item \structure{Now:} run processes outside JVM
+  \item \structure{Why:}
+  \pause
+    \begin{itemize}
+      \item Some programs do not exist in Scala/Java
+      \item \pause Want to sandbox untrusted code
+      \item \pause Performance (running independent code)
+    \end{itemize}
+  \pause
+  \item Using the \alert{\code{scala.sys.process}} package
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Using processes - examples}
+    
+\begin{lstlisting}[emph={execute,sleep,log,destroy,!}]
+import scala.sys.process._
+object ProcessRun extends App {
+  val command = "ls"
+  val exitcode = command.! // run process (with side effects)
+  log(s"command exited with status $exitcode") }
+\end{lstlisting}
+
+\begin{lstlisting}[emph={execute,sleep,log,destroy,!}]
+def lineCount(filename: String): Int = {
+  val output = s"wc $filename".!! // run and retreive stdout
+  output.trim.split(" ").head.toInt }
+\end{lstlisting}
+
+\begin{lstlisting}[emph={execute,sleep,log,destroy}]
+object ProcessAsync extends App {
+  val lsProcess = "ls -R /".run() // run and returns a Process object
+  Thread.sleep(1000)
+  log("Timeout - killing ls!")
+  lsProcess.destroy() } // kill a slow process
+\end{lstlisting}
+
+{\small\url{https://www.scala-lang.org/api/2.13.x/scala/sys/process/ProcessBuilder.html}}
+
+\end{frame}
+
+
+\begin{frame}\frametitle{Wrapping up ``concurrency blocks''} %{Summary of concurrency blocks covered}
+  \splittwo{0.56}{0.44}{
+    \begin{itemize}
+      \item \texttt{\color{blue!75!black}executor.execute(...)}
+      \item lock-free programming with atomic variables
+      \item \texttt{\color{blue!75!black}av.compareAndSet(...)}
+      \item ABA problem
+      \item Lazy values \& ``lazy'' objects
+      \item \texttt{\color{blue!75!black}java.util.concurrent.BlockingQueue}
+      \item \texttt{\color{blue!75!black}scala.collection.concurrent.Map}
+      \item \textcolor{gray}{\emph{weakly consistent iterators}}
+      \item \textcolor{gray}{\emph{custom concurrent data structures}}
+    \end{itemize}
+  }{
+    \begin{itemize}
+      \item Filesystem example
+      \item Processes outside JVM
+    \end{itemize}
+    \pause
+    \begin{alertblock}{Next}
+      \begin{itemize}
+        \item \textcolor{gray}{\emph{Futures and Promises}}
+        \item \textcolor{gray}{\emph{Data-Parallel Collections}}
+        \item \textcolor{gray}{\emph{Reactive Programming (Concurrently)}}
+        \item \textcolor{gray}{\emph{Software Transactional Memory}}
+        \item \alert{Actors}
+      \end{itemize}
+    \end{alertblock}
+  }
+\end{frame}
+
+
+\end{document}

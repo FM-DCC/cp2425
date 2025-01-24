@@ -1,0 +1,918 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage{etex} % fixes new-dimension error
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx,amsmath}
+\usepackage{stmaryrd} % cf. interleave
+\usepackage{booktabs}
+\usepackage{amscd}
+\usepackage{multicol}
+\usepackage[absolute,overlay]{textpos}
+\usepackage{alltt}
+\usepackage{proof}
+\usepackage{subcaption}
+\usepackage{tikz}
+\usepackage{tikz-cd}
+\usepackage[new]{old-arrows}
+\usepackage[all]{xy}
+\usepackage{pgfplots}
+\usepackage{textcomp}
+\usepackage{cancel}
+
+\input{src/macros/macros}
+%-------------- template --------------------------------------------------
+\input{src/macros/beamerconf}
+%----------------------------------------------------------------------------
+
+\begin{document}
+
+\setLecture{5}{Actor model using the Akka framework}
+
+
+\section{Overview}
+
+\begin{frame}{We are here}
+
+  \vspace*{-2mm}
+
+  \begin{block}{Blocks of sequential code running concurrently and sharing memory:}
+    
+  \begin{itemize}
+    \item What is Scala?
+    \item Concurrency in Java and its memory model
+    \item Basic concurrency blocks and libraries
+    % \item Futures and promises
+    \item \textcolor{gray}{\emph{Futures and Promises}}
+    \item \textcolor{gray}{\emph{Data-Parallel Collections}}
+    \item \textcolor{gray}{\emph{Reactive Programming (Concurrently)}}
+    \item \textcolor{gray}{\emph{Software Transactional Memory}}
+    \alert{\item Actor model}
+  \end{itemize}
+  \end{block}
+\end{frame}
+
+
+
+% \fromBookW[scale=0.7]{32}{98mm}{39mm}
+% \fromBook[scale=0.65]{32}{43mm}{98mm}{43mm}{39mm}
+
+% \begin{frame}[fragile]\frametitle{Current thread}
+% ~\\[-8mm]
+% \begin{columns}
+% \begin{column}{0.49\textwidth}
+% \begin{lstlisting}
+% ...
+% \end{lstlisting}
+% \end{column}
+% \begin{column}{0.49\textwidth}
+% ...
+% \end{column}
+% \end{columns}
+% \end{frame}
+
+
+\begin{frame}\frametitle{What is the actor model}
+  \splittwo{0.4}{0.6}{
+    \begin{itemize}
+      \item \alert{Asynchronous} message exchange between actors
+      \item Introduced in \alert{Erlang}\\(we use Akka's actor library)\\~
+      \item<2> Active, autonomous, \alert{no shared memory}, no synchronisation
+    \end{itemize}
+  }{
+    \centering
+    \includegraphicsframed[scale=1]{src/img/actor.pdf}\\~\\
+    \only<2>{\includegraphicsframed[scale=1]{src/img/actor-com.pdf}}
+  }
+\end{frame}
+
+\begin{frame}[t]\frametitle{What we will see}
+
+  We will use the Akka framework for actors for:
+  \begin{itemize}
+    \item Declaring \alert{actor classes} and creating \alert{actor instances}
+    \item Modelling \alert{actor state} and complex \alert{actor behaviours}
+    \item Manipulating the \alert{actor hierarchy} and the \alert{actor lifecycle}
+    \item The different message-passing patterns used in \alert{actor communication}
+    \item Error recovery using the built-in \alert{actor supervision} mechanism
+    \item Using \alert{remote actors} to build concurrent and distributed programs
+  \end{itemize}
+
+  Documentation: \url{https://doc.akka.io/docs/akka}
+
+
+\end{frame}
+
+
+\section{Creating actors}
+
+\begin{frame}[t]\frametitle{Core concepts}
+  ~\\[-8mm]    
+  \splittwo{0.5}{0.5}{
+    \begin{exampleblock}{Actor system}
+      Hierarchical group of actors with shared configurations, supporting actor creation and logging.
+    \end{exampleblock}
+
+    \begin{exampleblock}{Actor class}
+      Template that describes the states and behaviour of an actor, used to create instances.
+    \end{exampleblock}
+
+    \begin{exampleblock}{Actor instance}
+      Entity that exists at runtime, with a state and capable of sending and receiving messages.
+    \end{exampleblock}
+
+    \begin{exampleblock}{Message}
+      Unit of communication that actors use to communicate. In Akka, any object can be a message.
+    \end{exampleblock}
+  }{
+    \begin{exampleblock}{Mailbox}
+      Memory block that is used to buffer messages for a given actor instance.
+    \end{exampleblock}
+
+    \begin{exampleblock}{Actor reference}
+      Object that allows an object to send messages to a specific actor instance.
+    \end{exampleblock}
+
+    \begin{exampleblock}{Dispatcher}
+      Component that decides when actors are allowed to process messages. In Akka every dispatcher is also an execution context.
+    \end{exampleblock}
+  }
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{My first actor (class) in Akka}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.56\textwidth}
+\begin{lstlisting}[emph={Actor, Logging, receive, system,stop}]
+import akka.actor._
+import akka.event.Logging
+
+class HelloActor(val hello: String) extends Actor {
+  val log = Logging(context.system, this)
+  def receive = {
+    case `hello` =>
+      log.info(
+        s"Received a '$hello'... $hello!")
+    case msg     =>
+      log.info(
+        s"Unexpected message '$msg'")
+      context.stop(self)
+  }
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.44\textwidth}
+\begin{itemize}
+  \item Each \cod{HelloActor} receives messages
+  \item ... if it receives its \cod{hello}, it logs and \structure{continues}
+  \item ... if it receives something else, it \structure{stops}
+  \item \cod{context} -- provides core functions, such as \cod{stop}
+  \item \cod{self} -- is the instance's actor reference
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Configuring an actor in Akka}
+~\\[-6mm]
+\begin{columns}
+\begin{column}{0.51\textwidth}
+\begin{lstlisting}[emph={Actor, Logging, Props}]
+object HelloActor { // companion
+  // two factory methods below
+  def props(hello: String) =
+    Props(new HelloActor(hello))
+  def propsAlt(hello: String) =
+    Props(classOf[HelloActor], hello)
+  //def propsAlt2 = Props[HelloActor]
+}
+\end{lstlisting}
+\begin{exampleblock}{Actor configuration}
+  \begin{itemize}
+      \item actor class
+      \item constructor arguments
+      \item mailbox
+      \item dispatcher
+  \end{itemize} 
+\end{exampleblock}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{Props}
+  \begin{itemize}
+    \item can receive a block of code,
+     used each time a new actor instance is created;
+     \item can receive a \cod{Class} object and its arguments
+     \item can be sent over the network (should be self-contained)
+     \item avoid creating \cod{Props} in the actor class, and use factory methods instead
+  \end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{My first actor system with an instance}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem}]
+// in build.sbt:
+libraryDependencies ++= Seq( ...
+  ,"com.typesafe.akka" %% "akka-actor" % "2.8.5"
+  ,"com.typesafe.akka" %% "akka-remote" % "2.8.5"
+)
+\end{lstlisting}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem}]
+lazy val ourSystem = akka.actor.ActorSystem("OurExampleSystem")
+\end{lstlisting}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf}]
+object ActorsCreate extends App {
+  val hiActor: ActorRef =
+    ourSystem.actorOf(HelloActor.props("ola"), name = "greeter")
+  hiActor ! "ola"
+  Thread.sleep(1000)
+  hiActor ! "hi"
+  Thread.sleep(1000)
+  ourSystem.terminate()
+}
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Unhandled messages?}
+
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,unhandled}]
+class DeafActor extends Actor {
+  val log = Logging(context.system, this)
+  def receive = PartialFunction.empty
+  override def unhandled(msg: Any) = msg match {
+    case msg: String => log.info(s"I do not hear '$msg'")
+    case msg         => super.unhandled(msg)
+  }
+}
+\end{lstlisting}
+    
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf}]
+object ActorsUnhandled extends App {
+  val deafActor: ActorRef =
+    ourSystem.actorOf(Props[DeafActor], name = "deafy")
+  deafActor ! "ola"
+  Thread.sleep(1000)
+  deafActor ! 1234
+  Thread.sleep(1000)
+  ourSystem.terminate()
+}
+\end{lstlisting}
+\end{frame}
+
+
+\section{Modelling actor behaviour}
+
+\begin{frame}[fragile]\frametitle{My 2nd example in Akka: a (stateful) countdown}
+~\\[-6mm]
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\only<2>{\alert{Not allowed in Akka:}}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive}]
+class CountdownActor extends Actor{
+  var n = 10
+            // never do this
+  def receive = if (n > 0) {
+    case "count" =>
+      log(s"n = $n")
+      n -= 1
+  } else PartialFunction.empty
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.52\textwidth}
+\pause
+\alert{Correct in Akka, using \cod{become}:}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,become}]
+class CountdownActor extends Actor {
+  val log = Logging(context.system, this)
+  var n = 10
+  def counting: Actor.Receive = {
+    case "count" =>
+      n -= 1
+      log.info(s"n = $n")
+      if (n == 0) context.become(done)
+  }
+  def done = PartialFunction.empty
+  def receive = counting
+}
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}\frametitle{Actor as a transition system}
+  \centering
+  \fromBookW[scale=0.7]{278}{126mm}{43mm}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Running the countdown}
+
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,become}]
+object ActorsCountdown extends App {
+  val countdown = ourSystem.actorOf(Props[CountdownActor])
+  for (i <- 0 until 20) countdown ! "count"
+  Thread.sleep(1000)
+  ourSystem.terminate()
+}
+\end{lstlisting}
+
+
+\end{frame}
+
+
+\section{Actor hierarchy and lifecycle}
+
+\begin{frame}[fragile]\frametitle{New example with a parent}
+
+\begin{columns}
+\begin{column}{0.47\textwidth}
+~\\[1mm]
+\centering
+\begin{tikzpicture}
+  \tikzstyle{nd}=[rectangle,inner sep=4pt,minimum width=10mm,draw=black!60,fill=barcolor!20,very thick]
+  \node[nd,draw=none,fill=none,inner sep=1pt](sys){``OurExampleSystem''};
+  \node[nd, below=2mm of sys](par){``parent''};
+  \node[nd, below=2mm of par,xshift=-12mm](a){child$_1$};
+  \node[nd, below=2mm of par,xshift= 12mm](b){child$_2$};
+  \draw[<-,thick] (sys)edge(par) (par)edge(a)edge(b); 
+\end{tikzpicture}
+
+\pause
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,context,actorOf,receive}]
+class ChildActor extends Actor {
+  val log = Logging(context.system, this)
+  def receive = {
+    case "sayhi" =>
+      val parent = context.parent
+      log.info(s"my parent $parent made me say hi!")
+  }
+  override def postStop() {
+    log.info("child stopped!")
+  }
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.54\textwidth}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,become,context}]
+class ParentActor extends Actor {
+  val log = Logging(context.system, this)
+  def receive = {
+    case "create" =>
+      context.actorOf(Props[ChildActor])
+      log.info(s"created a kid; children = ${context.children}")
+    case "sayhi" =>
+      log.info("Kids, say hi!")
+      for (c <- context.children) c ! "sayhi"
+    case "stop" =>
+      log.info("parent stopping")
+      context.stop(self)
+  }
+}
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{A more complete view of the hierarchy}
+~\\[-6mm]
+\begin{columns}
+\begin{column}{0.57\textwidth}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive}]
+object ActorsHierarchy extends App {
+  val parent = ourSystem.actorOf(Props[ParentActor], "parent")
+  parent ! "create"
+  parent ! "create"
+  Thread.sleep(1000)
+  parent ! "sayhi"
+  Thread.sleep(1000)
+  parent ! "stop"
+  Thread.sleep(1000)
+  ourSystem.terminate()
+}\end{lstlisting}
+\end{column}
+\begin{column}{0.41\textwidth}
+  \fromBook[scale=0.6]{284}{46mm}{30mm}{46mm}{143mm}
+  ~\\
+  \splittwo{0.5}{0.5}{
+      - ActorSystem
+    \\- sys.terminate
+    \\- sys/ctxt.actorOf
+    \\
+  }{
+      - ctxt.stop
+    \\- ctxt.become
+    \\\alert{- ctxt.children}
+    \\\alert{- ctxt.parent}
+  }
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{A more complete view of the hierarchy}
+~\\[-6mm]
+\begin{columns}
+\begin{column}{0.57\textwidth}
+\begin{itemize}
+  \item \alert{parent} actor stops $\Rightarrow$ its \alert{children} stop
+  \item \structure{user} and \structure{system}:
+    \\ are \alert{guardian actors} -- at the top of the hierarchy, to log, restart actors, etc.
+  \item hierarchy visible when printing an actor ref, e.g., for the first child;
+    \\\code{akka://OurExampleSystem/user/parent/}\texttt{\$}\code{a}
+  \item \pause \alert{Next:}
+    \cod{ctxt.actorSelection(path)}
+\end{itemize}
+\end{column}
+\begin{column}{0.41\textwidth}
+  \fromBook[scale=0.6]{284}{46mm}{30mm}{46mm}{143mm}
+  ~\\
+  \splittwo{0.5}{0.5}{
+      - ActorSystem
+    \\- sys.terminate
+    \\- sys/ctxt.actorOf
+    \\
+  }{
+      - ctxt.stop
+    \\- ctxt.become
+    \\- ctxt.children
+    \\- ctxt.parent
+  }
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Discovering actors in the hierarchy}
+
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,Identify,actorSelection}]
+class CheckActor extends Actor {
+  val log = Logging(context.system, this)
+  def receive = {
+    case path: String =>
+      log.info(s"checking path $path")
+      context.actorSelection(path) ! Identify(path)
+    case ActorIdentity(path, Some(ref)) =>
+      log.info(s"found actor $ref at $path")
+    case ActorIdentity(path, None) =>
+      log.info(s"could not find an actor at $path")
+  }
+}
+\end{lstlisting}    
+
+\pause
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,Identify,actorSelection}]
+val checker = ourSystem.actorOf(Props[CheckActor], "checker")
+
+checker ! "../*"      // finds the checker and its siblings
+checker ! "../../*"   // finds user and system guardians
+checker ! "/system/*" // finds internal actors
+checker ! "/user/checker2" // logs that no actors were found
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}\frametitle{Once an actor throws an exception...}
+  When an actor throws an exception, a new \alert{``replacement'' actor} is created,
+  with the same:
+  \begin{itemize}
+    \item arguments
+    \item mailbox
+    \item ActorRef
+    \pause
+      \begin{itemize}
+        \item hence never leak the actual \alert{this} reference!
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{Actor lifecycle}
+
+\begin{itemize}
+  \item Created -- \cod{actorOf}
+  \item Before starting to process messages -- \cod{preStart()}
+  \item After an exception -- \cod{preRestart(t: Throwable, msg: Option[Any])}
+    \begin{itemize}
+      \item before creating a new actor
+      \item when all children are stopped
+    \end{itemize}
+  \item After recreating a restarted actor -- \cod{postRestart(t: Throwable)}
+    \begin{itemize}
+      \item the new actor is then assigned the previous mailbox
+    \end{itemize}
+  \item After an actor terminates -- \cod{postStop()}
+    \begin{itemize}
+      \item called by the default implementation of \code{preRestart}
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{Actor lifecycle in a diagram}
+  \centering
+  \fromBookW[scale=0.9]{289}{35mm}{130mm}
+\end{frame}
+
+
+
+
+\section{Synchrony vs. Asynchrony}
+
+\begin{frame}[t]\frametitle{Sending x and y from A to B}
+~\\[-8mm]
+\splittwo{0.5}{0.5}{
+\begin{exampleblock}{Synchronous (as in CCS)}
+$A = x!\,.\,y!$\\
+$B = x?\,.\,y?$\\
+$A~|~B\backslash\{x,y\}$
+\\[4mm]
+\pause
+$\Rightarrow ~~~~ \tau_x . \tau_y$
+\pause
+\end{exampleblock}
+}{
+\begin{alertblock}{Asynchronous (as in Akka)}
+$x!$ happens before $y!$\\
+$x?$ happens before $y?$\\\pause
+$x!$ happens before $x?$\\
+$y!$ happens before $y?$\\\pause
+$y!$ ?? $x?$
+\end{alertblock}
+}
+~\\
+\splittwo{0.5}{0.5}{
+\pause
+Different formalisations for global beh.:
+\begin{itemize}
+\item Message sequence charts
+\item Event structures
+\item Automata over interactions
+\item Choreographies:
+  \\$A\to B:x~~;~~A\to B:y$
+\end{itemize}
+}{
+  No duplication
+  \\ No messages lost
+  \\ No messages reordered
+  \\ No blocking send
+  \\[4mm]
+  \structure{Synchrony} modelled with \alert{Asynchrony}?
+  \\and vice-versa?
+}
+\end{frame}
+
+\begin{frame}[t]\frametitle{Diamond problem: sending by two routes}
+    
+    $A\to B: x;$\\
+    $A\to C: y;$\\
+    $C\to B: z$
+
+~\\
+
+$B$ must be ready to receive `$x?$' and `$z?$' by any order
+
+\end{frame}
+
+
+
+\section{Error recovery with actors}
+
+\begin{frame}[t]\frametitle{Stopping an actor}
+\begin{alertblock}{Main ways to stop an actor:}  
+\begin{itemize}
+  \item \cod{context.stop(act)} -- \alert{stops} \cod{act} and its children, once it finishes processing their current message
+  \item \cod{Kill} message -- \alert{restarts} the target actor once it is received
+    %once received, will restart the target actor without losing its mailbox
+  \item \cod{PoisonPill} message -- \alert{stops} the target actor \structure{after} once it is processed
+\end{itemize}
+\end{alertblock}
+
+\pause
+
+\begin{block}{Stopping in more complex scenarios:}
+  \begin{itemize}
+    \item Using Akka's \alert{DeathWatch} (next slide)
+  \end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}[t]\frametitle{Pingy-Pongy example}
+% // pongy: pingy?"ping";  pingy!"pong"; stop(self)
+% // pingy: master?pongy; pongy!"ping"; pongy?reply; master!reply; loop
+% // master: sys?"start"; pingy!pongy; _?"pong"; stop
+% master->pingy:pongyRef;
+% pingy->pongy:ping;
+% pongy->pingy:pong;
+% pongy:stop;
+% pingy->master:pong;
+% master:stop
+\centering    
+\begin{tabular}{cc}
+  \wrap{\includegraphicsframed[width=0.5\textwidth]{src/img/pingy-pongy.pdf}}
+  &
+  \begin{minipage}{0.3\textwidth}
+  \begin{itemize}
+    \item Example used in the book to illustrate the ask-reply pattern
+    \item (in pingy: \code{val reply = pongy ? "ping"})
+    \item We will adapt it for a graceful shutdown
+  \end{itemize}
+  \end{minipage}
+\end{tabular}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Graceful Pingy-Pongy}
+~\\[-6mm]
+\begin{columns}[t]
+\begin{column}{0.56\textwidth}
+% \only<2>{\alert{Not allowed in Akka:}}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive, watch,stop,Terminated}]
+class GracefulPingy extends Actor {
+  val log = Logging(context.system, this)
+  val pongy =
+    context.actorOf(Props[Pongy], "pongy")
+  context.watch(pongy)
+  def receive = {
+    case "start" => pongy ! "ping"
+    case "pong"  => log.info("Got a pong")
+    case "Die, Pingy!" =>
+      context.stop(pongy)
+    case Terminated(`pongy`) =>
+      context.stop(self)
+} }
+\end{lstlisting}
+\end{column}
+\begin{column}{0.44\textwidth}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,become,stop}]
+class Pongy extends Actor {
+  val log =
+    Logging(context.system,this)
+  def receive = {
+    case "ping" =>
+      log.info("Got a ping -- ponging back!")
+      sender ! "pong"
+  }
+  override def postStop() = log.info("pongy going down")
+}
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Running the gracefull app}
+\centering
+\splittwo{0.4}{0.6}{
+  \includegraphicsframed[width=\textwidth]{src/img/gpingy-pongy.pdf}
+}{
+
+  \begin{exampleblock}{Mechanism 1 (pingy $\leftrightarrow$ pongy)}
+  \begin{itemize}
+    \item \cod{context.watch(pongy)} -- the \code{DeathWatch}
+    \item wait for \cod{Terminated} message
+  \end{itemize}
+  \end{exampleblock}
+  \begin{alertblock}{Mechanism 2 (ourSystem $\leftrightarrow$ pingy)}
+  \begin{itemize}
+    \item ask to \code{``Die''}
+    \item check if it terminated -- using Futures
+  \end{itemize}
+  \end{alertblock}
+}
+
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Running the gracefull app (code)}
+~\\[-6mm]
+% \begin{columns}[t]
+% \begin{column}{0.56\textwidth}
+% \begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive, watch,stop}]
+%   val log = Logging(context.system, this)
+%   val pongy =
+%     context.actorOf(Props[Pongy], "pongy")
+%   context.watch(pongy)
+%   def receive = {
+%     case "start" => pongy ! "ping"
+%     case "pong"  => log.info("Got a pong")
+%     case "Die, Pingy!" =>
+%       context.stop(pongy)
+%     case Terminated(`pongy`) =>
+%       context.stop(self)
+% } }
+% \end{lstlisting}
+% \end{column}
+% \begin{column}{0.44\textwidth}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,become,stop,onComplete,gracefulStop}]
+import akka.pattern.gracefulStop
+
+object CommunicatingGracefulStop extends App {
+  val gracePingy = ourSystem.actorOf(Props[GracefulPingy], "gracePingy")
+  gracePingy ! "start"
+
+  val stopped = gracefulStop(gracePingy, 3.seconds, "Die, Pingy!")
+  stopped onComplete { // stopped is a Future (not covered)
+    case Success(x) =>
+      log("graceful shutdown successful")
+      ourSystem.terminate()
+    case Failure(t) =>
+      log("grace not stopped!")
+      ourSystem.terminate()
+} }
+\end{lstlisting}
+% \end{column}
+% \end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Handling children's exceptions (Actor supervision)}
+~\\[-10mm]
+\begin{columns}[t]
+\begin{column}{0.54\textwidth}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive, watch,stop,Terminated}]
+
+class Naughty extends Actor {
+  val log = Logging(context.system,this)
+  def receive = {
+    case s: String => log.info(s)
+    case msg => throw new RuntimeException
+  }
+  override def postRestart(t:Throwable)=
+    log.info("naughty restarted")
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.50\textwidth}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,become,stop,supervisorStrategy}]
+import SupervisorStrategy._
+class Supervisor extends Actor {
+  context.actorOf(Props[Naughty], "naughty")
+  def receive = PartialFunction.empty
+  override val supervisorStrategy =
+    OneForOneStrategy() {
+      case ake: ActorKilledException => Restart
+      case _ => Escalate
+} }
+\end{lstlisting}
+\end{column}
+\end{columns}
+~\\[-4pt]
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,become,stop}]
+ourSystem.actorOf(Props[Supervisor], "super")
+val children = ourSystem.actorSelection("/user/super/*")
+children ! "hello" // succeeds
+children ! Kill    // stops naughty, but super restarts it
+children ! "sorry about that" // succeeds
+children ! "kaboom".toList    // naughty and super throw exception
+\end{lstlisting}
+\end{frame}
+
+
+\section{Remote actors over TCP}
+
+\begin{frame}[fragile]\frametitle{Compilation with remote actors}
+~\\[-6.5mm]
+\begin{tabular}{ll}
+\begin{minipage}{0.18\textwidth}
+ \cod{build.sbt} needs to import akka-remote:
+\end{minipage}
+&
+\begin{minipage}{0.82\textwidth}
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,become,stop}]
+libraryDependencies ++= Seq(
+   ...
+  ,"com.typesafe.akka" %% "akka-actor" % "2.8.5" // or older
+  ,"com.typesafe.akka" %% "akka-remote" % "2.8.5"
+)
+\end{lstlisting}
+\end{minipage}
+\\
+\begin{minipage}{0.18\textwidth}
+  Network configured with Netty library
+\end{minipage}
+&
+\begin{minipage}{0.82\textwidth}
+\begin{lstlisting}[
+  showstringspaces=false,
+  emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,become,stop,remotingConfig,remotingSystem}]
+import com.typesafe.config._
+def remotingConfig(port: Int) = ConfigFactory.parseString(s"""
+  akka {
+    actor.provider = "akka.remote.RemoteActorRefProvider"
+    remote {
+      enabled-transports = ["akka.remote.netty.tcp"]
+      netty.tcp {
+        hostname = "127.0.0.1"
+        port = $port }
+    }
+  }""")
+def remotingSystem(name: String, port: Int): ActorSystem =
+     ActorSystem(name, remotingConfig(port))
+\end{lstlisting}
+\end{minipage}
+% \end{itemize}
+\end{tabular}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Remote Pingy-Pongy -- running two Apps!}
+~\\[-6mm]
+\begin{columns}[t]
+\begin{column}{0.46\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\tiny,emph={Actor, pingy, pongy, runner, Logging, Props, ourSystem,terminate,sleep,actorOf,receive, watch,stop,Terminated}]
+object RemotingPongySystem extends App {
+  val system = remotingSystem("PongyDimension", 24321)
+  val pongy = system.actorOf(Props[Pongy], "pongy")
+  Thread.sleep(15000)
+  system.terminate()
+}
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\tiny,
+  emph={Actor, pingy, pongy, runner, Logging, Props, ourSystem,terminate,sleep,actorOf,receive, watch,stop,Terminated}]
+object RemotingPingySystem extends App {
+  val system = remotingSystem("PingyDimension", 24567)
+  val runner = system.actorOf(Props[Runner], "runner")
+  runner ! "start"
+  Thread.sleep(5000)
+  system.terminate()
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\tiny,
+  emph={Actor, pingy, pongy, runner, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,become,stop}]
+class Runner extends Actor {
+  val log = Logging(context.system, this)
+  val pingy = context.actorOf(Props[Pingy], "pingy")
+  def receive = {
+    case "start" =>
+      val pongySys = "akka.tcp://PongyDimension@127.0.0.1:24321"
+      val pongyPath = "/user/pongy"
+      val url = pongySys + pongyPath
+      val selection = context.actorSelection(url)
+      selection ! Identify(0)
+    case ActorIdentity(0, Some(ref)) =>
+      pingy ! ref
+    case ActorIdentity(0, None) =>
+      log.info("Something's wrong - ain't no pongy anywhere!")
+      context.stop(self)
+    case "pong" =>
+      log.info("got a pong from another dimension.")
+      context.stop(self)
+  }
+}
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[t]\frametitle{Running the multi-dimensional Pingy-Pongy}
+
+\begin{itemize}
+  \item Start the \cod{RemotingPongySystem}
+  \item Start the \cod{RemotingPingySystem} within 15 sec.
+  \item Use different SBT instances
+  \item Runner in \cod{PingyDimension} should get a ``pong'' soon
+\end{itemize}
+    
+\pause
+\begin{block}{Deployment logic vs. Application logic}
+  \begin{itemize}
+    \item Deployment log.: setting up network communication
+    \item Application log.: interactions between agents
+    \item These should be kept in separate
+    \item In our example, \cod{Runner} handles deployment logic
+  \end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}[c]\frametitle{Wrapping up remote actors}
+  \begin{exampleblock}{Steps for handling remote actors}    
+    \begin{itemize}
+      \item \alert{Declaring} each actor system with appropriate remoting configuration
+      \item \alert{Starting} each actor system in separate processes or on separate machines
+      \item \alert{Obtain actor references} by using actor path selection
+      \item \alert{Transparently send messages} by using these actor references
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+
+
+\begin{frame}[t]\frametitle{Wrapping up Actors}
+    % We used the Akka framework for actors for:
+    \begin{itemize}
+      \item Declare \alert{actor classes} and create \alert{actor instances}
+      \item Model \alert{actor state} and complex \alert{actor behaviours}
+      \item Manipulate the \alert{actor hierarchy} and the \alert{actor lifecycle}
+      \item Use some message-passing patterns used in \alert{actor communication}
+      \item Use error recovery with the built-in \alert{actor supervision} mechanism
+      \item Use \alert{remote actors} to build concurrent and distributed programs
+    \end{itemize}
+
+  \splittwo{0.4}{0.6}{
+    ~\\~\\
+    Documentation: \url{https://doc.akka.io/docs/akka}
+  }{
+    \includegraphicsframed[scale=1]{src/img/actor-com.pdf}
+  }
+\end{frame}
+
+\end{document}
