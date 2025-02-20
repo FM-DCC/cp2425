@@ -5,9 +5,9 @@ layout: home
 
 The goal of this course is to introduce students to the fundamental theoretic and practical principals of concurrency, with emphasis on the correctness, design and implementation of models of concurrent computation using shared memory architectures.
 
- - __The 1st part__ of the course is more fundamental and is given by Nelma Moreira. <!-- More information [here](https://www.dcc.fc.up.pt/~nam/Teaching/progcon2324/index.php). -->
+ - __The 1st part__ of the course is more fundamental and is given by Nelma Moreira. More information [here](https://www.dcc.fc.up.pt/~nam/Teaching/progcon).
  - __This 2nd part__ of the course will focus on the programming aspect, using the Scala language to study several concurrency patterns and libraries in Java Virtual Machines.
-- The __official plan__ of this course is hosted in Sigarra@FCUP [here](https://sigarra.up.pt/fcup/pt/ucurr_geral.ficha_uc_view?pv_ocorrencia_id=548313).
+- The __official plan__ of this course is hosted in Sigarra@FCUP [here](https://sigarra.up.pt/fcup/pt/ucurr_geral.ficha_uc_view?pv_ocorrencia_id=548313), and more practival information can be found in [Moodle](https://sigarra.up.pt/fcup/pt/moodle_portal.go_moodle_portal_up?p_codigo=705891)
 
 
  <!-- - __Summaries__ and __assignments__ are placed in the associated [Moodle website](https://moodle2324.up.pt/course/view.php?id=1748). -->
