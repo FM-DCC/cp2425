@@ -15,10 +15,11 @@ The goal of this course is to introduce students to the fundamental theoretic an
 
 # Lectures
 
-- __4 Apr 24__: [T] Introduction to the second module ([1-intro.pdf](slides/1-intro.pdf)). Overview of Scala ([2-scala.pdf](slides/2-scala.pdf)).
+- __4 Apr 24__: [T] Introduction to the second module ([1-intro.pdf](slides/1-intro.pdf)). Overview of Scala ([2-scala.pdf](slides/2-scala.pdf)).  
+[P] Exercises on Scala ([ex-scala.pdf](exercises/ex-scala.pdf)).
 
 <!-- 
-- __11 Apr 24__: [P] Exercises on Scala ([ex-scala.pdf](exercises/ex-scala.pdf)). [T] Introduction to the Java Memory Model ([3-javamemory.pdf, slides 1-27](slides/3-javamemory.pdf)).
+- __11 Apr 24__:  [T] Introduction to the Java Memory Model ([3-javamemory.pdf, slides 1-27](slides/3-javamemory.pdf)).
 - __18 Apr 24__: [P] Exercises on the Java Memory Model ([ex-javamemory.pdf](exercises/ex-javamemory.pdf)). [T] Waiting and notifying; Graceful shutdown ([3-javamemory.pdf, slides 28-end](slides/3-javamemory.pdf)). Executors and ExecutionContext; atomic variables ([4-concblocks.pdf, slides 1-9](slides/4-concblocks.pdf)).
 - __2 May 24__: [P] Continuation of exercises on the Java Memory Model with waiting states ([ex-javamemory.pdf](exercises/ex-javamemory.pdf)); Execution contexts ([ex-concblocks.pdf](exercises/ex-concblocks.pdf)). [T] Using compare-and-swap; the ABA problem; lazy values and hidden locks ([4-concblocks.pdf, slides 8-33](slides/4-concblocks.pdf)).
 - __9 May 24__:[P] Continuation of exercises on concurrency building blocks, using atomic variables and lazy concepts ([ex-concblocks.pdf](exercises/ex-concblocks.pdf)). [T] Processes outside the JVM ([4-concblocks.pdf, slides 34-36](slides/4-concblocks.pdf)); Actor in Akka: creation, execution, and behaviour, hierarchy and lifecycle ([5-actors.pdf, slides 1-19](slides/5-actors.pdf)).
