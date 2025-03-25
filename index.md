@@ -33,9 +33,9 @@ The goal of this course is to introduce students to the fundamental theoretic an
 ### Slides
 1. [Introduction to the second module](slides/1-intro.pdf)
 2. [Scala primer](slides/2-scala.pdf)
+3. [Java Memory Model](slides/3-javamemory.pdf)
 
 <!--
-3. [Java Memory Model](slides/3-javamemory.pdf)
 4. [Basic building blocks of concurrency](slides/4-concblocks.pdf)
 5. [Actor model](slides/5-actors.pdf)
  -->
@@ -43,15 +43,16 @@ The goal of this course is to introduce students to the fundamental theoretic an
 ### Exercises
 
 1. [Exercises on Scala](exercises/ex-scala.pdf)
+2. [Exercises on Java Memory](exercises/ex-javamemory.pdf)
 
-<!-- 2. [Exercises on Java Memory](exercises/ex-javamemory.pdf)
+<!--
 3. [Exercises on Java Memory](exercises/ex-javamemory.pdf)
 4. [Exercises on building blocks of concurrency](exercises/ex-concblocks.pdf)
 5. [Exercises on the actor model](exercises/ex-actors.pdf)
  -->
 
 ### Examples of exams and tests
-- [2023-2024 - Test for the second module (at _época normal_)](exercises/cp-test-normal24.pdf)
+- [2023-2024 - Test for the second module (at _época normal_)](https://fm-dcc.github.io/pc2324/exercises/cp-test-normal24.pdf)
 - [2018-2019 - Test for the first module (authentication needed - during the semester)](https://www.dcc.fc.up.pt/~nam/Teaching/progcon2324/ligacoes/index.html)
 
 
@@ -69,7 +70,7 @@ The goal of this course is to introduce students to the fundamental theoretic an
 
 ### Previous years
 
-- (2023/24): [https://fm-dcc.github.io/cp2425](https://fm-dcc.github.io/cp2425)
+- (2023/24): [https://fm-dcc.github.io/pc2324](https://fm-dcc.github.io/pc2324/)
 - (2018/19): [https://www.dcc.fc.up.pt/~nam/Teaching/procon20/](https://www.dcc.fc.up.pt/~nam/Teaching/procon20/)
   
 <!-- 

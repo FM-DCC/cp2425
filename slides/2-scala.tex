@@ -343,6 +343,42 @@ def show(ie: IntOrError)
 \end{frame}
 
 
+\begin{frame}[fragile]\frametitle{Try-catch}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.56\textwidth}
+\begin{lstlisting}
+trait IntOrError
+case class MyInt(i:Int)      extends IntOrError
+case class MyError(e:String) extends IntOrError
+
+//...
+def getInt(ie: IntOrError)
+  ie match {
+    case MyInt(i)   => i
+    //case MyError(e) => ???
+    // (match error if an error is found)
+  }
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.42\textwidth}
+\begin{lstlisting}
+def showInt(ie:IntOrError) = 
+  try {
+    println(s"Int value: \§{getInt(i)}")
+  } catch { 
+    case _: Throwable => println("Got some error - probably not an int.")
+  } finally {
+    // always executes
+    // (for side-effects, not to return results)
+    println("Done showing")
+  }
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
 \begin{frame}[fragile]\frametitle{Operator overloading}
 ~\\[-8mm]
 \begin{columns}
@@ -411,6 +447,7 @@ Requires starting with\\~~\texttt{package cp.lablessons}
   \item ``\texttt{for}'' comprehension
   \item Scala collections and string interpolation
   \item Pattern matching
+  \item Try-catch
   \item Operator overloading
   \item Package objects
 \end{itemize}
