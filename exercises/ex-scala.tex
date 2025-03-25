@@ -6,6 +6,7 @@
 \input{macros/preamble}
 \input{macros/slides-macros}
 \input{macros/macros}
+\usepackage{hyperref}
 \usepackage{url}
 % \input{macros/tp-macros}
 
@@ -86,7 +87,7 @@ If you are in the SBT shell and you modify the \bash{build.sbt} you need to relo
 \end{myExercise}
 
 \begin{myExercise}
-Implement a \code{compose} method with the following signature:
+Implement and test a \code{compose} method with the following signature:
 \begin{lstlisting}
 def compose[A, B, C](g: B => C, f: A => B): A => C = ???
 \end{lstlisting}
@@ -95,7 +96,7 @@ functions \code{f} and \code{g}.
 \end{myExercise}
 
 \begin{myExercise}
-Implement a \code{fuse} method with the following signature:
+Implement and test a \code{fuse} method with the following signature:
 \begin{lstlisting}
 def fuse[A, B](a: Option[A], b: Option[B]): Option[(A, B)] = ???
 \end{lstlisting}
@@ -103,7 +104,7 @@ The resulting \code{Option} object should contain a tuple of values from the Opt
 \end{myExercise}
 
 \begin{myExercise}
-Implement a \code{check} method, which takes a set of values of type \code{T} and a function of type \code{T => Boolean}:
+Implement and test a \code{check} method, which takes a set of values of type \code{T} and a function of type \code{T => Boolean}:
 \begin{lstlisting}
 def check[T](xs: Seq[T])(pred: T => Boolean): Boolean = ???
 \end{lstlisting}
@@ -114,20 +115,20 @@ check(0 until 10)(40 / _ > 0)
 \note{The \code{check} method has a curried definition: instead of just one parameter list, it has two of them. Curried definitions allow a nicer syntax when calling the function, but are otherwise semantically equivalent to single-parameter list definitions.}
 \end{myExercise}
 
-\ex{Modify the \code{Pair} class from the theoretical lessons so that it can be used in a pattern match.
+\ex{Modify the \code{Pair} class from \href{https://fm-dcc.github.io/cp2425/slides/2-scala.pdf\#page=13}{the theoretical lessons} so that it can be used in a \href{https://fm-dcc.github.io/cp2425/slides/2-scala.pdf\#page=20}{pattern match}.
 Implement a method \code{+(other:Pair): Pair} using pattern matching and test it.
 % \note{If you haven't already done so, familiarize yourself with pattern matching in Scala.}
 }
 
 \begin{myExercise}
-Implement a \code{permutations} function, which, given a string, returns a sequence of strings that are lexicographic permutations of the input string:
+Implement and test a \code{permutations} function, which, given a string, returns a sequence of strings that are lexicographic permutations of the input string:
 \begin{lstlisting}
 def permutations(x: String): Seq[String]
 \end{lstlisting}
 \end{myExercise}
 
 \begin{myExercise}
-Implement a combinations function that, given a sequence of elements, produces an iterator over all possible combinations of length \code{n}. A combination is a way of selecting elements from the collection so that every element is selected once, and the order of elements does not matter. For example, given a collection \code{Seq(1,4,9,16)}, combinations of length 2 are \code{Seq(1,4)}, \code{Seq(1,9)}, \code{Seq(1,16)}, \code{Seq(4,9)}, \code{Seq(4,16)}, and \code{Seq(9,16)}. The combinations function has the following signature:
+Implement and test a combinations function that, given a sequence of elements, produces an iterator over all possible combinations of length \code{n}. A combination is a way of selecting elements from the collection so that every element is selected once, and the order of elements does not matter. For example, given a collection \code{Seq(1,4,9,16)}, combinations of length 2 are \code{Seq(1,4)}, \code{Seq(1,9)}, \code{Seq(1,16)}, \code{Seq(4,9)}, \code{Seq(4,16)}, and \code{Seq(9,16)}. The combinations function has the following signature:
 \begin{lstlisting}
 def combinations(n: Int, xs: Seq[Int]): Iterator[Seq[Int]]
 \end{lstlisting}
@@ -136,7 +137,7 @@ See the Iterator API in the standard library documentation.
 \end{myExercise}
 
 \begin{myExercise}
-Implement a method that takes a regular expression, and returns a partial function from a string to lists of matches within that string:
+Implement and test a method that takes a regular expression, and returns a partial function from a string to lists of matches within that string:
 \begin{lstlisting}
 def matcher(regex: String): PartialFunction[String,List[String]]
 \end{lstlisting}

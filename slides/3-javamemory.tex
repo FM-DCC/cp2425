@@ -101,6 +101,7 @@ Using SBT, this prints:
 \\\code{[info] I am the thread sbt-bg-threads-1}
 \\[4mm]
 In SBT do ``\code{set fork := true}''
+\\(or add ``\code{fork := true}'' to build.sbt)
 \\
 It will then it prints:
 \\\code{[info] I am the thread main}
@@ -191,15 +192,6 @@ object ThreadsSleep extends App {
 ~\\[-8mm]
 \begin{columns}
 \begin{column}{0.49\textwidth}
-\begin{itemize}
-  \item \texttt{``New thread''} printed always at the end
-  \item Other prints not always in the same order -- nondeterministic execution
-  \item Common in concurrent applications -- what makes it so hard
-  \item Note: \texttt{join} also forces all memory writes from the threads before proceeding
-\end{itemize}
-
-\end{column}
-\begin{column}{0.49\textwidth}
 \begin{lstlisting}[emph={sleep,log,thread,join}]
 object ThreadsNondeterminism extends App {
   val t = thread {
@@ -211,6 +203,18 @@ object ThreadsNondeterminism extends App {
   log("New thread joined.")
 }
 \end{lstlisting}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{What to expect?}
+\pause
+\begin{itemize}
+  \item \texttt{``New thread joined''} printed always at the end
+  \item Other prints not always in the same order -- nondeterministic execution
+  \\~\pause
+  \item Common in concurrent applications -- what makes it so hard
+  \item Note: \texttt{join} also forces all memory writes from the threads before proceeding
+\end{itemize}
+\end{block}
 \end{column}
 \end{columns}
 \end{frame}
@@ -252,6 +256,8 @@ object ThreadsUnprotectedUid extends App {
     val freshUid = uidCount + 1
     uidCount = freshUid
     freshUid
+  }
+...
 }
 \end{lstlisting}
 
@@ -275,19 +281,19 @@ t.join()
 ...
 \end{lstlisting}
 \end{column}
-\begin{column}{0.49\textwidth}
-\begin{lstlisting}[emph={sleep,log,thread,join}]
-object ThreadsNondeterminism extends App {
-  val t = thread {
-    log("New thread running.")
-  }
-  log("...")
-  log("...")
-  t.join()
-  log("New thread joined.")
-}
-\end{lstlisting}
-\end{column}
+% \begin{column}{0.49\textwidth}
+% \begin{lstlisting}[emph={sleep,log,thread,join}]
+% object ThreadsNondeterminism extends App {
+%   val t = thread {
+%     log("New thread running.")
+%   }
+%   log("...")
+%   log("...")
+%   t.join()
+%   log("New thread joined.")
+% }
+% \end{lstlisting}
+% \end{column}
 \end{columns}
 \only<1>{\structure{What do you expect?}}%
 \only<2>{\begin{block}{Race Condition}
@@ -314,7 +320,7 @@ def getUniqueId() =
       val freshUid = uidCount + 1
       uidCount = freshUid
       freshUid
-}
+  }
 \end{lstlisting}
 \end{column}
 \begin{column}{0.49\textwidth}
@@ -746,14 +752,16 @@ $~$
 \begin{itemize}
   \item Our \texttt{Worker} can run forever (\texttt{while-true})
   \item Terminates when the JVM terminates (daemon)
-  \item \texttt{Worker} can be terminated earlier while waiting
+  \item \texttt{Worker} can be terminated earlier while waiting with \alert{\texttt{Worker.interrupt()}}
+  \pause
+  \\~
+  \item This triggers:
     \begin{itemize}
-      \item \alert{\texttt{Worker.interrupt()}}
-      \item triggers an \alert{\texttt{InterruptedException}} that can be handled
-      \item if it was not waiting, then no exception is raised
-      \item instead a flag \alert{\texttt{Worker.isInterrupted}} becomes true
-      \item needed if the thread does not awake with \texttt{notify} (e.g., it is doing blocking I/O)
+      \item \structure{If it was waiting}: an \alert{\texttt{InterruptedException}} that can be handled
+      \item \structure{If it was not waiting}: no exception and a flag \alert{\texttt{Worker.isInterrupted}} becomes true
     \end{itemize}
+  ~\\\pause
+  \item Interrupts are needed if a thread does not awake with \texttt{notify} (e.g., it is doing blocking I/O)
 \end{itemize}
 \end{frame}
 
@@ -806,13 +814,13 @@ object Volatile extends App {
   val pages = for (i<- 1 to 5) yield
     new Page("Na" * (100 - 20 * i) + " Batman!", -1)
   @volatile var found = false
-  for (p <- pages) yield thread {
-    var i = 0
-    while (i < p.txt.length && !found)
-      if (p.txt(i) == '!') {
-        p.position = i
-        found = true
-      } else i += 1
+  for (p <- pages) yield thread {       
+    var i = 0                           // 
+    while (i < p.txt.length && !found)  // 
+      if (p.txt(i) == '!') {            // Separate
+        p.position = i                  //  thread
+        found = true                    // 
+      } else i += 1                     // 
   }
   while (!found) {}
   log(s"results: \§{pages.map(_.position)}")
@@ -841,7 +849,10 @@ means  \structure{action $\beta$} sees the memory writes of \structure{action $\
 \end{itemize}
 
 % \pause
-\structure{Data race:} when a write to memory does not \alert{happen-before} its \emph{intended} read.
+\begin{alertblock}{Data race}
+When a write to memory does not \alert{happen-before} its \emph{intended} read.
+\end{alertblock}
+
 \end{frame}
 
 \begin{frame}[fragile]\frametitle{Immutable objects and final fields}
