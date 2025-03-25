@@ -218,6 +218,26 @@ object ThreadsNondeterminism extends App {
 
 \section{Control of the execution order}
 
+\begin{frame}\frametitle{Happens-before relation}
+\centering
+
+\structure{action $\alpha$} \alert{happens-before (HB)} \structure{action $\beta$}\\
+means  \structure{action $\beta$} sees the memory writes of \structure{action $\alpha$}
+
+\begin{itemize}
+\item \textbf{Program order:} $\alpha$ in a thread \alert{HB} every subsequent $\beta$ in that program and thread
+\item \textbf{Thread start:} calling \texttt{thrd.start()} \alert{HB} any actions of \texttt{thrd}
+\item \textbf{Thread termination:} $\alpha$ in a thread \alert{HB} a \texttt{join()} on that thread.
+\item \textbf{Transitivity:} if $\alpha$ \alert{HB} $\beta$ and $\beta$ \alert{HB} $\gamma$, then $\alpha$ \alert{HB} $\gamma$
+\item ...
+\end{itemize}
+
+\pause
+\structure{Data race:} when a write to memory does not \alert{happen-before} its \emph{intended} read.
+\end{frame}
+
+
+
 \begin{frame}[fragile]\frametitle{Atomic Execution}
 \begin{itemize}
   \item \texttt{join} provides guarantees that other threads terminated
@@ -427,6 +447,29 @@ object SynchronizedNesting extends App {
    log(s"--- transfers ---\n\§transfers")
 \end{lstlisting}
 \end{frame}
+
+
+\begin{frame}\frametitle{Happens-before relation (again)}
+\centering
+
+\structure{action $\alpha$} \alert{happens-before (HB)} \structure{action $\beta$}\\
+means  \structure{action $\beta$} sees the memory writes of \structure{action $\alpha$}
+
+\begin{itemize}
+\item \textbf{Program order:} $\alpha$ in a thread \alert{HB} every subsequent $\beta$ in that program and thread
+\item \textbf{Thread start:} calling \texttt{thrd.start()} \alert{HB} any actions of \texttt{thrd}
+\item \textbf{Thread termination:} $\alpha$ in a thread \alert{HB} a \texttt{join()} on that thread.
+\item \textbf{Transitivity:} if $\alpha$ \alert{HB} $\beta$ and $\beta$ \alert{HB} $\gamma$, then $\alpha$ \alert{HB} $\gamma$
+\item ...
+\structure{
+\item \textbf{Monitor locking:} unlocking \alert{HB} every subsequent locking (of the same lock)
+}
+\end{itemize}
+
+\end{frame}
+
+
+
 
 
 \section{Deadlocks}
@@ -788,14 +831,16 @@ means  \structure{action $\beta$} sees the memory writes of \structure{action $\
 
 \begin{itemize}
 \item \textbf{Program order:} $\alpha$ in a thread \alert{HB} every subsequent $\beta$ in that program and thread
-\item \textbf{Monitor locking:} unlocking \alert{HB} every subsequent locking (of the same lock)
-\item \textbf{Volatile fields:} writing to a volatile field \alert{HB} every of its subsequent read
 \item \textbf{Thread start:} calling \texttt{thrd.start()} \alert{HB} any actions of \texttt{thrd}
 \item \textbf{Thread termination:} $\alpha$ in a thread \alert{HB} a \texttt{join()} on that thread.
 \item \textbf{Transitivity:} if $\alpha$ \alert{HB} $\beta$ and $\beta$ \alert{HB} $\gamma$, then $\alpha$ \alert{HB} $\gamma$
+\item \textbf{Monitor locking:} unlocking \alert{HB} every subsequent locking (of the same lock)
+\structure{
+\item \textbf{Volatile fields:} writing to a volatile field \alert{HB} every of its subsequent read
+}
 \end{itemize}
 
-\pause
+% \pause
 \structure{Data race:} when a write to memory does not \alert{happen-before} its \emph{intended} read.
 \end{frame}
 
