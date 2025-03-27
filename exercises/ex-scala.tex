@@ -8,6 +8,7 @@
 \input{macros/macros}
 \usepackage{hyperref}
 \usepackage{url}
+%https://tex.stackexchange.com/questions/50747/options-for-appearance-of-links-in-hyperref#50754
 % \input{macros/tp-macros}
 
 \setHeader{Exercises: Introduction to Scala}%
@@ -23,8 +24,12 @@
 These exercises are taken mainly from the book ``\emph{Learning Concurrent Programming in Scala}'', and are designed to test the knowledge of the Scala programming language. You should solve them by sketching out a pseudocode solution, rather than a complete Scala program.
 
 \begin{myExercise} Set up your computer to compile and run Scala.
-\subex{Install SBT -- \url{http://www.scala-sbt.org}.}
-\subex{Open a Command Promp.}
+\subex{Install SBT -- \url{http://www.scala-sbt.org}.
+\\
+\emph{If SBT is not installed in your Linux machine, you can install it locally using the following commands in the Command Prompt:}
+\\\bash{> cd; curl -fsSL https://github.com/sbt/sbt/releases/download/v1.10.11/sbt-1.10.11.zip; unzip sbt-1.10.11.zip; export PATH=$\$$PATH:$\$$HOME/sbt/bin}
+}
+\subex{Open a Command Prompt.}
 \subex{Create a folder for the project:
 \\\bash{> mkdir cp2425}
 \\\bash{> cd cp2425}
@@ -83,6 +88,7 @@ libraryDependencies ++= Seq(
 \end{lstlisting}
 If you are in the SBT shell and you modify the \bash{build.sbt} you need to reload it:
 \\\bash{sbt> reload}
+\note{If you want to use a more powerful IDE, you can use IntelliJ, start a new project from source files, and point to the \code{built.sbt} file.}
 
 \end{myExercise}
 
