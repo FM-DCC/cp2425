@@ -27,7 +27,7 @@ These exercises are taken mainly from the book ``\emph{Learning Concurrent Progr
 \subex{Install SBT -- \url{http://www.scala-sbt.org}.
 \\
 \emph{If SBT is not installed in your Linux machine, you can install it locally using the following commands in the Command Prompt:}
-\\\bash{> cd; curl -fsSL https://github.com/sbt/sbt/releases/download/v1.10.11/sbt-1.10.11.zip; unzip sbt-1.10.11.zip; export PATH=$\$$PATH:$\$$HOME/sbt/bin}
+\\\bash{> cd; wget https://github.com/sbt/sbt/releases/download/v1.10.11/sbt-1.10.11.zip; unzip sbt-1.10.11.zip; export PATH=$\$$PATH:$\$$HOME/sbt/bin}
 }
 \subex{Open a Command Prompt.}
 \subex{Create a folder for the project:
@@ -83,7 +83,6 @@ libraryDependencies ++= Seq(
   "commons-io" % "commons-io" % "2.4"
   ,"com.typesafe.akka" %% "akka-actor" % "2.8.5"
   ,"com.typesafe.akka" %% "akka-remote" % "2.8.5"
-)
 )
 \end{lstlisting}
 If you are in the SBT shell and you modify the \bash{build.sbt} you need to reload it:
