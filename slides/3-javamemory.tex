@@ -609,6 +609,7 @@ def send(a1: Account, a2: Account, n: Int) {
   worker.setDaemon(true)
   worker.start()
 
+  // Test our program
   def asynchr(body: =>Unit) =
     tasks.synchronized {
       tasks.enqueue(()=>body)
@@ -618,7 +619,6 @@ def send(a1: Account, a2: Account, n: Int) {
   asynchr{ log(" world!")}
   Thread.sleep(5000)
 }
-
 
 
 $~$
@@ -647,7 +647,7 @@ $~$
   \begin{block}{Busy-waiting is bad}
     \begin{itemize}
       \item needlessly uses processor power (and drains the battery)
-      \item after executing the previous code the \texttt{worker} will keep on running (unless you set in SBT \code{set fork := true},)
+      \item after executing the previous code the \texttt{worker} will keep on running (unless you set in SBT \code{set fork := true}, or add \code{fork := true} to your \code{build.sbt} file)
       \item in general, we want the \texttt{worker} to enter a waiting state
     \end{itemize}
     
