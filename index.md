@@ -38,9 +38,9 @@ The goal of this course is to introduce students to the fundamental theoretic an
 1. [Introduction to the second module](slides/1-intro.pdf)
 2. [Scala primer](slides/2-scala.pdf)
 3. [Java Memory Model](slides/3-javamemory.pdf)
+4. [Basic building blocks of concurrency](slides/4-concblocks.pdf)
 
 <!--
-4. [Basic building blocks of concurrency](slides/4-concblocks.pdf)
 5. [Actor model](slides/5-actors.pdf)
  -->
 
@@ -48,6 +48,7 @@ The goal of this course is to introduce students to the fundamental theoretic an
 
 1. [Exercises on Scala](exercises/ex-scala.pdf)
 2. [Exercises on Java Memory](exercises/ex-javamemory.pdf)
+4. [Exercises on building blocks of concurrency](exercises/ex-concblocks.pdf)
 
 <!--
 3. [Exercises on Java Memory](exercises/ex-javamemory.pdf)
