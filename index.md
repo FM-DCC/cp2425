@@ -61,10 +61,11 @@ The goal of this course is to introduce students to the fundamental theoretic an
 - [2018-2019 - Test for the first module (authentication needed - during the semester)](https://www.dcc.fc.up.pt/~nam/Teaching/progcon2324/ligacoes/index.html)
 
 
- ### Assignment
+### Assignment
 
 - [Practical assignment on Concurrent Programming 2024/25](exercises/cp-project-2425.pdf)
 - Chose your group [via Moodle](https://moodle2425.up.pt/mod/choicegroup/view.php?id=186186) - there should be two people in each group.
+
 <!-- - Submit your assignment [via moodle](https://moodle2324.up.pt/mod/assign/view.php?id=180761) (only one of the group members needs to submit it, and the latest submission is used) -->
 <!-- - Book your presentation using this [shared spreadsheet](https://docs.google.com/spreadsheets/d/1HZqn6nFbYI_LbvfNnqcqlh0gF30DGociU0w0wfwkiyg/edit?usp=sharing) (you must login with your google account from the faculty, e.g., "up202000000@g.uporto.pt") -->
 
