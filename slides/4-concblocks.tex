@@ -80,6 +80,8 @@
     \item Lazy (concurrent) values
     \item Concurrent collections
     \item Running OS processes
+    \item \textcolor{gray}{\emph{Futures and Promises}}
+
   \end{itemize}
 
 
@@ -337,7 +339,8 @@ def compareAndSet(ov: T, nv: T):
 \begin{column}{0.54\textwidth}
 ~\\
 \begin{lstlisting}[emph={execute,sleep,log,compareAndSet,synchronized}]
-@tailrec def getUniqueId(): Long = {
+@tailrec
+def getUniqueId(): Long = {
   val oldUid = uid.get
   val newUid = oldUid + 1
   if (uid.compareAndSet(oldUid, newUid)) newUid

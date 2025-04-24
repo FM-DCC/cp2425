@@ -25,22 +25,22 @@ Most of these require implementing new concurrent data structures using atomic v
 
 
 \begin{myExercise}
-Implement a custom \code{ExecutionContext} class\footnote{\url{https://www.scala-lang.org/api/2.13.3/scala/concurrent/ExecutionContext.html}} called \code{PiggybackContext}, which executes \code{Runnable} objects on the same thread that calls the \code{execute} method. Ensure that a \code{Runnable} object executing on the \code{PiggybackContext} can also call the \code{execute} method and that exceptions are properly reported.
+\textbf{Implement} a custom \code{ExecutionContext} class\footnote{\url{https://www.scala-lang.org/api/2.13.3/scala/concurrent/ExecutionContext.html}} called \code{PiggybackContext}, which executes \code{Runnable} objects on the same thread that calls the \code{execute} method. Ensure that a \code{Runnable} object executing on the \code{PiggybackContext} can also call the \code{execute} method and that exceptions are properly reported using our \code{log} function. \textbf{Test} your code with code that succeeds and with code that throws an exception.
 \end{myExercise}
 
 \begin{myExercise}
-Implement a \code{TreiberStack} class, which implements a concurrent stack abstraction:
+\textbf{Implement} a \code{TreiberStack} class, which implements a concurrent stack abstraction:
 \begin{lstlisting}
 class TreiberStack[T] {
   def push(x: T): Unit = ???
   def pop(): T = ???
 }
 \end{lstlisting}
-Use an atomic reference variable that points to a linked list of nodes that were previously pushed to the stack. Make sure that your implementation is lock-free and not susceptible to the ABA problem.
+\textbf{Use an atomic reference variable} that points to a linked list of nodes that were previously pushed to the stack. Make sure that your implementation is lock-free and not susceptible to the ABA problem.
 \end{myExercise}
 
 \begin{myExercise}
-Implement a \code{ConcurrentSortedList} class, which implements a concurrent sorted list abstraction:
+\textbf{Implement} a \code{ConcurrentSortedList} class, which implements a concurrent sorted list abstraction:
 \begin{lstlisting}
 class ConcurrentSortedList[T](implicit val ord: Ordering[T]) {
   def add(x: T): Unit = ???
@@ -49,8 +49,9 @@ class ConcurrentSortedList[T](implicit val ord: Ordering[T]) {
   case class Node(head:T, tail: AtomicReference[...])
  }
 \end{lstlisting}
-Under the hood, the \code{ConcurrentSortedList} class should use a (manually created) linked list of atomic references by inserting elements in the right position. Ensure that your implementation is lock-free and avoids ABA problems.
+Under the hood, the \code{ConcurrentSortedList} class should \textbf{use a (manually created) linked list of atomic references} by inserting elements in the right position. Ensure that your implementation is lock-free and avoids ABA problems.
 The \code{Iterator} object returned by the iterator method must correctly traverse the elements of the list in ascending order under the assumption that there are no concurrent invocations of the add method.
+\textbf{Test} the creation of a list and the use of an iterator.
 \end{myExercise}
 
 \begin{myExercise}
