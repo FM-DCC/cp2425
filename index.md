@@ -49,6 +49,7 @@ The goal of this course is to introduce students to the fundamental theoretic an
 1. [Exercises on Scala](exercises/ex-scala.pdf)
 2. [Exercises on Java Memory](exercises/ex-javamemory.pdf)
 4. [Exercises on building blocks of concurrency](exercises/ex-concblocks.pdf)
+5. [Exercises on futures and promises](exercises/ex-futures.pdf)
 
 <!--
 3. [Exercises on Java Memory](exercises/ex-javamemory.pdf)

@@ -1,0 +1,100 @@
+\documentclass[11pt]{article}
+
+\renewcommand\familydefault{\sfdefault}
+
+
+\input{macros/preamble}
+\input{macros/slides-macros}
+\input{macros/macros}
+\usepackage{url}
+% \input{macros/tp-macros}
+
+\setHeader{Exercises: Futures and Promises}%
+ {Concurrent Programming -- Part 2}%
+
+
+
+
+\begin{document}
+
+\myHeader
+
+These exercises are inspired mainly from the book ``\emph{Learning Concurrent Programming in Scala}''.
+%
+You are required to implement operations that work correctly in concurrent settings, using Scala's notions of futures and promises.
+The exercises are not ordered in any particular order, but some assume earlier exercises have been done.
+
+We recommand starting with the code that you produced for the exercises for the Java memory model.
+
+% In the following set of exercises, you are required to implement higher-level concurrency abstractions in terms of basic JVM concurrency primitives. Some of these exercises introduce concurrent counterparts of sequential programming abstractions, and, in doing so, highlight important differences between sequential and concurrent programming. The exercises are not ordered in any particular order, but some of them rely on specific content from earlier exercises or this chapter:
+
+% blindly copied:
+
+\begin{myExercise}Re-implement \textbf{using futures} a \code{parallel} method, which takes two computation blocks,~\code{a} and~\code{b}, and starts each of them in a new thread. The method must return a tuple with the result values of both the computations. It should have the following signature:
+\begin{lstlisting}
+def parallel[A, B](a: =>A, b: =>B): (A, B)
+\end{lstlisting}
+Do not use explicitly creation of new threads as before. Use the \code{log} function when testing your code.
+\end{myExercise}
+
+\begin{myExercise}Re-implement \textbf{using futures} a \code{periodically} method, which takes a time interval duration specified in milliseconds, and a computation block \code{b}. The method starts a thread that executes the computation block~\code{b} every duration milliseconds, even if the previous computation did not finish yet. It should have the following signature:
+\begin{lstlisting}
+def periodically(duration: Long)(b: =>Unit): Unit
+\end{lstlisting}
+\end{myExercise}
+
+\begin{myExercise}Implement and test a \code{SyncVal} class \textbf{using a promise in the internal state}  with the following interface:
+\begin{lstlisting}
+class SyncVal[T] {
+  def isEmpty(): Boolean = ???
+  def get(): T = ???
+  def put(x: T): Unit = ???
+  def getWait(): T = ???
+}
+\end{lstlisting}
+A \code{SyncVal} object can be used to exchange values between two or more threads.
+When created, the \code{SyncVar} object is \textbf{empty}:
+\begin{itemize}
+  \item \code{isEmpty} returns true;
+  \item \code{get} throws an exception;
+  \item \code{put} adds a value to the \code{SyncVal} object.
+  \item \code{getWait} blocks until it can return a value;
+\end{itemize}
+After a value is added to a \code{SyncVal} object, we say that it is \textbf{non-empty}:
+\begin{itemize}
+  \item \code{isEmpty} returns false;
+  \item \code{get} returns the value;
+  \item \code{put} throws an exception.
+  \item \code{getWait} also returns the value;
+\end{itemize}
+\end{myExercise}
+
+
+\begin{myExercise}
+  Consider the code below that gets the content of a webpage as a list of strings, one for each line.
+\begin{lstlisting}
+object WebpageSearch extends App {
+  /** Gets the text from a given URL as a list of strings. */
+  def getUrlLines(url: String): List[String] = {
+    val f = Source.fromURL(url)
+    try f.getLines.toList finally f.close()
+  }
+
+  /** Finds lines where a given keyword appears. */
+  def find(lines: List[String], keyword: String): String =
+    (for ((line,n) <- lines.zipWithIndex
+          if line.contains(keyword)))
+     yield (n,line)
+    ).mkString("\n")
+
+  ...
+}
+\end{lstlisting}
+  \subex{Use futures to get the content of the website \code{https://www.w3.org/Addressing/URL/url-spec.txt} into a variable \code{futSpec}.}
+  \subex{Calculate a new future \code{futFindTelnet: Future[String]} that searches for the keyword \code{"telnet"} in the result of the \code{futSpec} using the \code{find} method.}
+  \subex{Print (using \code{log}) a message upon finishing to collect the url-specs (saying \code{"reading url-spec completed"} in case of success, and \code{"failed to read url-spec"} in case of failure).}
+  \subex{Print (using \code{log}) a message with the result from the telnet search once it is received.}
+\end{myExercise}
+
+
+\end{document}

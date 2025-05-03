@@ -887,4 +887,301 @@ object ProcessAsync extends App {
 \end{frame}
 
 
+\section{Extra: Quick guide to the Future}
+
+\begin{frame}[t]\frametitle{Futures and Promises}
+
+\begin{itemize}
+  \item High-level asynchronous constructs
+  \item Used very often by libraries that use concurrent tasks
+  \\~
+  \item \alert{Future}:
+    read-only placeholder for the result of an ongoing computation
+  % is a placeholder that eventually becomes a value to be \alert{read}
+  \item \structure{Promise}:
+    writable, single-assignment container that completes a Future
+  % is a placeholder that eventually becomes a value to be \structure{written}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Creating a Feature}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.56\textwidth}
+~\\
+\begin{lstlisting}[emph={execute,sleep,log,Future}]
+object LazyValsCreate extends App {
+  import scala.concurrent._
+  import Future
+  import ExecutionContext.Implicits.global
+  
+  val futFive = Future {
+    log("Computation started.")
+    val result = {
+      Thread.sleep(5000)
+      5
+    }
+    log("Computation finally finished.")
+    result // : Future[Int]
+  }
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{block}{Small notes}
+\begin{itemize}
+  \item Using our \texttt{ExecutionContext.global}
+  \item import of \texttt{Implicits.global} $\Leftrightarrow$
+  \\ \texttt{implicit val ec = ExecutionContext.global}
+  \pause\\~
+  \\\item{\footnotesize\texttt{Future.apply[T]}}
+  \\~~{\footnotesize\texttt{(body: => T)}}
+  \\~~{\footnotesize\texttt{(implicit ec: ExecutionContext)}}
+  \\~~{\footnotesize\texttt{: Future[T]}}
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Getting the values 1: onComplete}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.56\textwidth}
+~\\
+\begin{lstlisting}[emph={execute,sleep,log,Future,Try,Success,Failure,onComplete}]
+import scala.util.{Try,Success,Failure}
+...
+val futFive = Future { ... }
+
+def getFive = futFive.onComplete {
+  case Success(n) =>
+    log(s"Got number: $n")
+  case Failure(exception) =>
+    log(s"Failed to get number: $exception")
+}
+getFive
+Thread.sleep(6000)
+getFive // What to expect?
+\end{lstlisting}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{block}{A future has 2 stages}
+\begin{itemize}
+  \item \alert{Not completed} (ongoing computation)
+  \item \structure{Completed} (finished computation)
+  \begin{itemize}
+    \item \texttt{Success(res)} (no errors)
+    \item \texttt{Failure(err)} (got errors)
+  \end{itemize}
+\end{itemize}
+\end{block}
+\begin{alertblock}{Method 1: onComplete}\small
+  \texttt{futFive.onComplete[U]}
+  \\~~\texttt{(callback: Try[Int] => U)}
+  \\~~\texttt{(implicit exec: ...)}
+  \\~~\texttt{: Unit}
+\end{alertblock}
+
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Getting the values 2: Await}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.56\textwidth}
+~\\
+\begin{lstlisting}[emph={execute,sleep,log,Future,Try,Success,Failure,onComplete,Await,result,ready}]
+import scala.concurrent.duration._
+...
+val futFive = Future { ... }
+
+def getFive  = // : Int
+  Await.result(futFive, Duration.inf) 
+def doneFive = // : Future[Int]
+  Await.ready (futFive, 6.seconds)
+
+val r1 = getFive // doneFive
+val r2 = getFive // doneFive
+Thread.sleep(6000)
+val r3 = getFive // doneFive
+\end{lstlisting}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{block}{A future has 2 stages}
+\begin{itemize}
+  \item \alert{Not completed} (ongoing computation)
+  \item \structure{Completed} (finished computation)
+  \begin{itemize}
+    \item \texttt{Success(res)} (no errors)
+    \item \texttt{Failure(err)} (got errors)
+  \end{itemize}
+\end{itemize}
+\end{block}
+\begin{alertblock}{Method 2: Await.result/ready}
+  \begin{itemize}
+    \item Can throw \texttt{TimeoutException}
+  \end{itemize}
+\end{alertblock}
+
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Polling a future}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.56\textwidth}
+~\\
+\begin{lstlisting}[emph={execute,sleep,log,Future,Try,Success,Failure,onComplete,Await,result,ready}]
+import scala.concurrent.duration._
+...
+val futFive = Future { ... }
+
+def checkFive = // : Boolean
+  futFive.isCompleted
+def maybeFive = // : Option[Try[Int]]
+  futFive.value
+
+val r1 = checkFive // maybeFive
+val r2 = checkFive // maybeFive
+Thread.sleep(6000)
+val r3 = checkFive // maybeFive
+\end{lstlisting}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{block}{A future has 2 stages}
+\begin{itemize}
+  \item \alert{Not completed} (ongoing computation)
+  \item \structure{Completed} (finished computation)
+  \begin{itemize}
+    \item \texttt{Success(res)} (no errors)
+    \item \texttt{Failure(err)} (got errors)
+  \end{itemize}
+\end{itemize}
+\end{block}
+\begin{alertblock}{Polling: isCompleted/value}
+  % \begin{itemize}
+How to check the status without blocking
+  % \end{itemize}
+\end{alertblock}
+
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Composing futures}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.56\textwidth}
+~\\
+\begin{lstlisting}[emph={execute,sleep,log,Future,Try,Success,Failure,onComplete,Await,result,ready}]
+import scala.concurrent.duration._
+...
+val futTwo  = Future { ... } // takes 2s
+val futFive = Future { ... } // takes 5s
+
+val r1 = futTwo.map(x => x*3)
+val r2 = for (
+    x <- futFive
+    y <- r1
+  ) yield 
+    x+y
+log(s"a) \§{r1.value}/\§{r2.value}")
+Thread.sleep(3000)
+log(s"b) \§{r1.value}/\§{r2.value}")
+Thread.sleep(6000)
+log(s"c) \§{r1.value}/\§{r2.value}")
+\end{lstlisting}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{itemize}
+  \item read and update futures ``in advance''
+  \item \texttt{map}, \texttt{flatMap}, \texttt{for}-loops
+  \\~\pause
+  \item very common mechanism to run tasks in parallel
+  \item used in many libraries
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Promises: the other side of the Future}
+~\\[-8mm]
+\begin{columns}
+\begin{column}{0.46\textwidth}
+\begin{block}{A promise \texttt{p} can...}
+\begin{itemize}
+  \item \texttt{p.future}
+  \item \texttt{p.success(res)}
+  \item \texttt{p.failure(exception)}
+  \item \texttt{p.complete(Success(res))}
+\end{itemize}
+\end{block}
+\end{column}\begin{column}{0.56\textwidth}
+~\\
+\begin{lstlisting}[emph={execute,sleep,log,Future,Promise,Try,
+  Success,Failure,onComplete,Await,result,ready,success,failure},
+  emph={[2]prom,fut}]
+import scala.concurrent.{Future,Promise}
+import scala.concurrent...Implicits.global
+
+val prom = Promise[Int]()
+val alice = Future { // execute/thread
+  val res = {Thread.sleep(2000); 2}
+  prom.success(res)
+  log(s"gave '\§res'")
+  Thread.sleep(2000) // more work
+}
+val fut = prom.future
+val bob = Future { // execute/thread
+  Thread.sleep(3000)
+  fut.foreach { r =>
+    log("got '\§r'")
+  }
+}
+\end{lstlisting}
+\end{column}
+
+\end{columns}
+\end{frame}
+
+
+\begin{frame}\frametitle{Wrapping up ``concurrency blocks'' (again)}
+%{Summary of concurrency blocks covered}
+  \splittwo{0.56}{0.44}{
+    \begin{itemize}
+      \item \texttt{\color{blue!75!black}executor.execute(...)}
+      \item lock-free programming with atomic variables
+      \item \texttt{\color{blue!75!black}av.compareAndSet(...)}
+      \item ABA problem
+      \item Lazy values \& ``lazy'' objects
+      \item \texttt{\color{blue!75!black}java.util.concurrent.BlockingQueue}
+      \item \texttt{\color{blue!75!black}scala.collection.concurrent.Map}
+      \item \textcolor{gray}{\emph{weakly consistent iterators}}
+      \item \textcolor{gray}{\emph{custom concurrent data structures}}
+    \end{itemize}
+  }{
+    \begin{itemize}
+      \item Filesystem example
+      \item Processes outside JVM
+      \alert{\item Futures and Promises (overview)}
+    \end{itemize}
+    \begin{alertblock}{Next}
+      \begin{itemize}
+        \item \textcolor{gray}{\emph{Data-Parallel Collections}}
+        \item \textcolor{gray}{\emph{Reactive Programming (Concurrently)}}
+        \item \textcolor{gray}{\emph{Software Transactional Memory}}
+        \item \alert{Actors}
+      \end{itemize}
+    \end{alertblock}
+  }
+\end{frame}
+
 \end{document}
