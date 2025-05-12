@@ -30,7 +30,9 @@
 \setLecture{4}{Basic building blocks of concurrency}
 
 
-\section{Overview}
+%%%%%%%%%%%%%%%%%%%%%
+\section{Overview} %%
+%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}{We are here}
 
@@ -87,7 +89,11 @@
 
 \end{frame}
 
-\section{Existing thread pools in Scala}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Existing thread pools in Scala} %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \begin{frame}[fragile]\frametitle{Executor interface}
@@ -239,7 +245,9 @@ object ExecutionContextSleep
 
 
 
-\section{Lock-free programming}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Lock-free programming} %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]\frametitle{Avoiding \texttt{syncrhonized} with atomic variables}
 ~\\[-8mm]
@@ -445,10 +453,10 @@ class Entry(val isDir: Boolean) {
 }
 
 sealed trait State
-class Idle extends State
-class Creating extends State
+class Idle                extends State
+class Creating            extends State
 class Copying(val n: Int) extends State
-class Deleting extends State
+class Deleting            extends State
 \end{lstlisting}
 \end{column}
 \end{columns}
@@ -464,7 +472,7 @@ class Deleting extends State
 
 \begin{frame}[fragile]\frametitle{Prepare for deleting}
 
-\begin{lstlisting}[emph={execute,sleep,log,logMessage,compareAndSet,State,AtomicReference}]
+\begin{lstlisting}[emph={execute,sleep,log,logMessage,compareAndSet,State,AtomicReference,prepareForDelete}]
 @tailrec
 private def prepareForDelete(entry: Entry): Boolean = {
   val  s0 = entry.state.get
@@ -503,17 +511,17 @@ Illustrated by a bad acquire-release for \cod{Copying}, using a mutable \cod{n} 
 def releaseCopy(e: Entry): Copying = e.state.get match {
   case c: Copying =>
     val nstate = if (c.n == 1) new Idle else new Copying(c.n - 1)
-    if (e.state.compareAndSet(c, nstate)) c
+    if (e.state.compareAndSet(c, nstate)) c // returns the old Copying state
     else releaseCopy(e)
 }
 \end{lstlisting}
 \begin{lstlisting}[emph={execute,sleep,log,logMessage,compareAndSet,acquireCopy}]
 def acquireCopy(e: Entry, c: Copying) = e.state.get match {
   case i: Idle =>
-    c.n = 1
+    c.n = 1         // updating `n` in `c`
     if (!e.state.compareAndSet(i, c)) acquireCopy(e, c)
   case oc: Copying =>
-    c.n = oc.n + 1
+    c.n = oc.n + 1  // updating `n` in `c`
     if (!e.state.compareAndSet(oc, c)) acquireCopy(e, c)
 }
 \end{lstlisting}
@@ -522,8 +530,19 @@ Optimization: reusing previous \cod{Copying} if possible
 
 
 % \begin{frame}\frametitle{Bad trace -- T1\&T2 release; T3\&T1 aquire -- (T2 is slow)}
-\begin{frame}\frametitle{Bad trace -- T1 release (T2 starts rel.); T3 acquires; T1 acquire; T2 releases wrongly}
+\begin{frame}\frametitle{Bad trace}
+% -- T1 release (T2 starts rel.); T3 acquires; T1 acquire; T2 releases wrongly}
+
+    \begin{block}{
+      \wrap{T1 releases\\(\alert{T2 starts rel.})}
+      ~~~$\Rightarrow$~~~
+      \wrap{T3 acquires}
+      ~~~$\Rightarrow$~~~
+      \wrap{T1 acquires}
+      ~~~$\Rightarrow$~~~
+      \wrap{\alert{T2 releases}\\\alert{(wrongly)}}}
     \fromBookW{82}{151mm}{33mm}
+    \end{block}
 \end{frame}
 
 
@@ -539,7 +558,59 @@ Optimization: reusing previous \cod{Copying} if possible
 \end{frame}
 
 
-\section{Lazy values}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Creating and handling processes} %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}\frametitle{Beyond JVM}
+
+\begin{itemize}
+  \item \structure{So far:} run in a single JVM
+  \item \structure{Now:} run processes outside JVM
+  \item \structure{Why:}
+  \pause
+    \begin{itemize}
+      \item Some programs do not exist in Scala/Java
+      \item \pause Want to sandbox untrusted code
+      \item \pause Performance (running independent code)
+    \end{itemize}
+  \pause
+  \item Using the \alert{\code{scala.sys.process}} package
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Using processes - examples}
+    
+\begin{lstlisting}[emph={execute,sleep,log,destroy,!}]
+import scala.sys.process._
+object ProcessRun extends App {
+  val command = "ls"
+  val exitcode = command.! // run process (with side effects)
+  log(s"command exited with status $exitcode") }
+\end{lstlisting}
+
+\begin{lstlisting}[emph={execute,sleep,log,destroy,!}]
+def lineCount(filename: String): Int = {
+  val output = s"wc $filename".!! // run and retreive stdout
+  output.trim.split(" ").head.toInt }
+\end{lstlisting}
+
+\begin{lstlisting}[emph={execute,sleep,log,destroy}]
+object ProcessAsync extends App {
+  val lsProcess = "ls -R /".run() // run and returns a Process object
+  Thread.sleep(1000)
+  log("Timeout - killing ls!")
+  lsProcess.destroy() } // kill a slow process
+\end{lstlisting}
+
+{\small\url{https://www.scala-lang.org/api/2.13.x/scala/sys/process/ProcessBuilder.html}}
+
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Lazy values} %%
+%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]\frametitle{Lazy values can cause deadlocks}
 ~\\[-8mm]
@@ -580,7 +651,11 @@ object LazyValsDeadlock extends App {
 \end{columns}
 \end{frame}
 
-\section{Concurrent (mutable) collections}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Concurrent (mutable) collections} %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \begin{frame}[fragile]\frametitle{Default mutable collections are not concurrent}
@@ -732,7 +807,7 @@ def deleteFile(filename: String): Unit = {
     \splittwo{0.48}{0.48}{
       \begin{itemize}
         \item These use ``equals'' instead of the reference (which CAS does)
-        \item Avoid \code{null} as key or valye (often used as special values)
+        \item Avoid \code{null} as key or value (often used as special values)
       \end{itemize}
     }{
       \begin{itemize}
@@ -807,53 +882,9 @@ def copyFile(src: String, dest: String): Unit = {
 
 
 
-\section{Creating and handling processes}
-
-\begin{frame}\frametitle{Beyond JVM}
-
-\begin{itemize}
-  \item \structure{So far:} run in a single JVM
-  \item \structure{Now:} run processes outside JVM
-  \item \structure{Why:}
-  \pause
-    \begin{itemize}
-      \item Some programs do not exist in Scala/Java
-      \item \pause Want to sandbox untrusted code
-      \item \pause Performance (running independent code)
-    \end{itemize}
-  \pause
-  \item Using the \alert{\code{scala.sys.process}} package
-\end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]\frametitle{Using processes - examples}
-    
-\begin{lstlisting}[emph={execute,sleep,log,destroy,!}]
-import scala.sys.process._
-object ProcessRun extends App {
-  val command = "ls"
-  val exitcode = command.! // run process (with side effects)
-  log(s"command exited with status $exitcode") }
-\end{lstlisting}
-
-\begin{lstlisting}[emph={execute,sleep,log,destroy,!}]
-def lineCount(filename: String): Int = {
-  val output = s"wc $filename".!! // run and retreive stdout
-  output.trim.split(" ").head.toInt }
-\end{lstlisting}
-
-\begin{lstlisting}[emph={execute,sleep,log,destroy}]
-object ProcessAsync extends App {
-  val lsProcess = "ls -R /".run() // run and returns a Process object
-  Thread.sleep(1000)
-  log("Timeout - killing ls!")
-  lsProcess.destroy() } // kill a slow process
-\end{lstlisting}
-
-{\small\url{https://www.scala-lang.org/api/2.13.x/scala/sys/process/ProcessBuilder.html}}
-
-\end{frame}
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Wrap up} %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}\frametitle{Wrapping up ``concurrency blocks''} %{Summary of concurrency blocks covered}
   \splittwo{0.56}{0.44}{
@@ -887,7 +918,10 @@ object ProcessAsync extends App {
 \end{frame}
 
 
-\section{Extra: Quick guide to the Future}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Extra: Quick guide to the Future} %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[t]\frametitle{Futures and Promises}
 
@@ -1152,6 +1186,9 @@ val bob = Future { // execute/thread
 \end{columns}
 \end{frame}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section*{Wrap up} %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}\frametitle{Wrapping up ``concurrency blocks'' (again)}
 %{Summary of concurrency blocks covered}
