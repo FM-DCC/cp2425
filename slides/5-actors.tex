@@ -468,6 +468,10 @@ object ActorsHierarchy extends App {
   Thread.sleep(1000)
   ourSystem.terminate()
 }\end{lstlisting}
+~\\[-10mm]
+\begin{exampleblock}{}
+Draw a sequence and a communication diagram (UML)
+\end{exampleblock}
 \end{column}
 \begin{column}{0.41\textwidth}
   \fromBook[scale=0.6]{284}{46mm}{30mm}{46mm}{143mm}
@@ -523,7 +527,7 @@ object ActorsHierarchy extends App {
 
 \begin{frame}[fragile]\frametitle{Discovering actors in the hierarchy}
 
-\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,Identify,actorSelection}]
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,Identify,actorSelection,ActorIdentity}]
 class CheckActor extends Actor {
   val log = Logging(context.system, this)
   def receive = {
@@ -535,11 +539,11 @@ class CheckActor extends Actor {
     case ActorIdentity(path, None) =>
       log.info(s"could not find an actor at $path")
   }
-}
+} // Discovery: actorSelection + Identify + ActorIdentity
 \end{lstlisting}    
 
 \pause
-\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,Identify,actorSelection}]
+\begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,Identify,actorSelection,ActorIdentity}]
 val checker = ourSystem.actorOf(Props[CheckActor], "checker")
 
 checker ! "../*"      // finds the checker and its siblings
@@ -567,27 +571,48 @@ checker ! "/user/checker2" // logs that no actors were found
 \begin{frame}\frametitle{Actor lifecycle}
 
 \begin{itemize}
-  \item Created -- \cod{actorOf}
-  \item Before starting to process messages -- \cod{preStart()}
-  \item After an exception -- \cod{preRestart(t: Throwable, msg: Option[Any])}
+  \item \cod{actorOf} -- Creation of an actor reference + instantiation
+  \item \cod{preStart()} -- Ran before starting to process messages (\structure{default:} empty)
+  \item \cod{preRestart(t: Throwable, msg: Option[Any])} -- Ran after an \alert{exception}:
     \begin{itemize}
-      \item before creating a new actor
-      \item when all children are stopped
+      \item before creating a new replacement actor (same reference)
+      \item restarting is handled by the parent's \alert{Supervision Strategy} (more later)
+      % \item when all children are stopped
+      \item \structure{default:} stops children + runs \code{postStop}
     \end{itemize}
-  \item After recreating a restarted actor -- \cod{postRestart(t: Throwable)}
+  \item \cod{postRestart(t: Throwable)} -- Ran after recreating a restarted actor
     \begin{itemize}
       \item the new actor is then assigned the previous mailbox
+      \item \structure{default:} call \code{preStart()}
     \end{itemize}
-  \item After an actor terminates -- \cod{postStop()}
-    \begin{itemize}
-      \item called by the default implementation of \code{preRestart}
-    \end{itemize}
+  \item \cod{postStop()} -- Ran after an actor terminates (\structure{default:} empty)
 \end{itemize}
 \end{frame}
+
+% \begin{itemize}
+%   \item Created -- \cod{actorOf}
+%   \item Before starting to process messages -- \cod{preStart()}
+%   \item After an exception -- \cod{preRestart(t: Throwable, msg: Option[Any])}
+%     \begin{itemize}
+%       \item before creating a new actor
+%       \item when all children are stopped
+%     \end{itemize}
+%   \item After recreating a restarted actor -- \cod{postRestart(t: Throwable)}
+%     \begin{itemize}
+%       \item the new actor is then assigned the previous mailbox
+%     \end{itemize}
+%   \item After an actor terminates -- \cod{postStop()}
+%     \begin{itemize}
+%       \item called by the default implementation of \code{preRestart}
+%     \end{itemize}
+% \end{itemize}
+% \end{frame}
 
 \begin{frame}\frametitle{Actor lifecycle in a diagram}
   \centering
   \fromBookW[scale=0.9]{289}{35mm}{130mm}
+
+  {\footnotesize More: \url{https://doc.akka.io/libraries/akka-core/current/actors.html\#classic-actors}}
 \end{frame}
 
 
