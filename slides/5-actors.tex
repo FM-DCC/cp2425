@@ -19,6 +19,12 @@
 \usepackage{textcomp}
 \usepackage{cancel}
 
+% Cyrillic characters -- \foreignlanguage{russian}{слово} OR \begin{otherlanguage*}{russian}... 
+\usepackage[T2A,T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[russian,english]{babel}
+
+
 \input{src/macros/macros}
 %-------------- template --------------------------------------------------
 \input{src/macros/beamerconf}
@@ -148,7 +154,7 @@ import akka.event.Logging
 
 class HelloActor(val hello: String) extends Actor {
   val log = Logging(context.system, this)
-  def receive = {
+  def receive = { // Any => Unit (partial)
     case `hello` =>
       log.info(
         s"Received a '$hello'... $hello!")
@@ -235,12 +241,81 @@ object ActorsCreate extends App {
 \end{frame}
 
 
+\begin{frame}[fragile]\frametitle{HelloActor in one slide}
+~\\[-6mm]
+\begin{columns}
+\begin{column}{0.58\textwidth}
+\begin{lstlisting}[emph={Actor, Logging, Props, receive, stop, log, terminate, actorOf}]
+import akka.actor._
+import akka.event.Logging
+
+object ActorsCreate2 extends App {
+  lazy val ourSystem =
+    akka.actor.ActorSystem("OurSystem")
+
+  class Hi(val hi: String) extends Actor {
+    val log = Logging(context.system, this)
+    def receive = {
+      case `hi` =>
+        log.info(s"Got a '$hi'... $hi!")
+      case msg     =>
+        log.info(s"Unexpected '$msg'")
+        context.stop(self)
+    }
+  }
+\end{lstlisting}
+\end{column}
+\begin{column}{0.42\textwidth}
+\begin{lstlisting}[emph={Actor, Logging, Props, receive, stop, log, terminate, actorOf},mathescape=true]
+  val hiActor: ActorRef =
+    ourSystem.actorOf(
+      Props(new Hi("ola")),
+      name = "greeter")
+
+  hiActor ! "ola"
+  // ... Got a 'ola'... ola!
+  Thread.sleep(1000)
+  hiActor ! "yo"
+  // ... Unexpected 'yo'
+  Thread.sleep(1000)
+  hiActor ! "$\textsf{\textcolor{green!60!black}{\foreignlanguage{russian}{привет}}}$" 
+  // ... Message (...) was not delivered.
+  Thread.sleep(1000)
+  ourSystem.terminate()
+}
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{HelloActor's feedback}
+~\\[-6mm]
+\begin{lstlisting}[emph={Actor, Logging, Props, receive, stop, log, terminate, actorOf},mathescape=true]
+  hiActor ! "ola"
+  // ... [akka://OurSystem/user/greeter] Got a 'ola'... ola!
+
+  Thread.sleep(1000)
+  hiActor ! "yo"
+  // ... [akka://OurSystem/user/greeter] Unexpected 'yo'
+
+  Thread.sleep(1000)
+  hiActor ! "$\textsf{\textcolor{green!60!black}{\foreignlanguage{russian}{привет}}}$" 
+  // ... [akka://OurSystem/user/greeter] Message [...] to Actor[akka://OurSystem/user/greeter#-726408098] was not delivered.
+
+  Thread.sleep(1000)
+  ourSystem.terminate()
+}
+\end{lstlisting}
+\end{frame}
+
+
 \begin{frame}[fragile]\frametitle{Unhandled messages?}
 
 \begin{lstlisting}[emph={Actor, Logging, Props, ourSystem,terminate,sleep,actorOf,receive,unhandled}]
 class DeafActor extends Actor {
   val log = Logging(context.system, this)
   def receive = PartialFunction.empty
+  // default: ignore and log
   override def unhandled(msg: Any) = msg match {
     case msg: String => log.info(s"I do not hear '$msg'")
     case msg         => super.unhandled(msg)
@@ -364,7 +439,8 @@ class ParentActor extends Actor {
       log.info(s"created a kid; children = ${context.children}")
     case "sayhi" =>
       log.info("Kids, say hi!")
-      for (c <- context.children) c ! "sayhi"
+      for (c <- context.children)
+        c ! "sayhi"
     case "stop" =>
       log.info("parent stopping")
       context.stop(self)
