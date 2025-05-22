@@ -39,7 +39,7 @@ extends Actor {
   def receive = ???
 }
 \end{lstlisting}
-After the \code{SessionActor} instance receives the \code{StartSession} message with the correct password, it forwards all the messages to the actor reference \code{r}, until it receives the \code{EndSession} message. Use behaviours to model this actor.
+After the \code{SessionActor} instance receives the \code{StartSession} message with the correct password, it forwards all the messages to the actor reference \code{r}, until it receives the \code{EndSession} message. Use behaviours to model this actor. Test your code with a simple \code{TestActor} that receives and logs the messages sent through the \code{SessionActor}.
 \end{myExercise}
 
 \begin{myExercise}
