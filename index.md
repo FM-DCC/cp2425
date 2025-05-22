@@ -23,8 +23,10 @@ The goal of this course is to introduce students to the fundamental theoretic an
 [P] Exercises on the Java Memory Model ([ex-javamemory.pdf](exercises/ex-javamemory.pdf)).
 - __24 Apr 25__ (planned): [T] Waiting and notifying; Graceful shutdown ([3-javamemory.pdf, slides 28-end](slides/3-javamemory.pdf)). Executors and ExecutionContext; atomic variables ([4-concblocks.pdf](slides/4-concblocks.pdf)).  
 [P] Continuation of exercises on the Java Memory Model with waiting states ([ex-javamemory.pdf](exercises/ex-javamemory.pdf)); Execution contexts ([ex-concblocks.pdf](exercises/ex-concblocks.pdf)).
-- __15 May 24__: [T] Recall Executors and ExecutionContext; atomic variables; using compare-and-swap; the ABA problem; processes outside the JVM; lazy values and hidden locks ([4-concblocks.pdf, slides 4-28](slides/4-concblocks.pdf)).  
+- __15 May 25__: [T] Recall Executors and ExecutionContext; atomic variables; using compare-and-swap; the ABA problem; processes outside the JVM; lazy values and hidden locks ([4-concblocks.pdf, slides 4-28](slides/4-concblocks.pdf)).  
 [P] Continuation of exercises on concurrency building blocks, using atomic variables and lazy concepts ([ex-concblocks.pdf](exercises/ex-concblocks.pdf))
+- __22 May 25__: [T] Concurrent structures: thread-safe queues and maps ([4-concblocks.pdf, slides 28-36](slides/4-concblocks.pdf)); Actor in Akka: creation, execution, and behaviour ([5-actors.pdf, slides 1-15](slides/5-actors.pdf)).  
+[P] Recalling atomic variables ([ex-concblocks.pdf](exercises/ex-concblocks.pdf)); deploying actors in Akka ([ex-actors.pdf](exercises/ex-actors.pdf)]); support for the [practical assignment](exercises/cp-project-2425.pdf).
 
 
 <!-- 
