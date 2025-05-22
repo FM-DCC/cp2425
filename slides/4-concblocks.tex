@@ -823,7 +823,7 @@ def deleteFile(filename: String): Unit = {
 \begin{frame}[fragile]\frametitle{Copying in our Filesystem}
     Recall our \alert{broken} \structure{aquireCopy}/\structure{releaseCopy} methods (\alert{ABA problem}) -- slide\ref{slide:badcopy}
 
-\begin{lstlisting}[emph={execute,sleep,log,Copying,aquire,compareAndSet}]
+\begin{lstlisting}[emph={execute,sleep,log,Copying,acquire,compareAndSet}]
 @tailrec
 private def acquire(entry: Entry): Boolean = {
   val s0 = entry.state.get

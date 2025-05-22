@@ -24,7 +24,7 @@ These exercises are taken mainly from the book ``\emph{Learning Concurrent Progr
 Try to solve these exercises by first assuming that no machines fail, and then consider what happens if some of the machines fail during the execution of the program:
 
 \begin{myExercise}
-Implement the timer actor with the \code{TimerActor} class. After receiving a \code{Register} message containing the \code{t} timeout in milliseconds, the timer actor sends a \code{Timeout} message back after \code{t} milliseconds. The timer must accept multiple \code{Register} messages.
+Implement the timer actor with the \code{TimerActor} class. After receiving a \code{Register} message containing the \code{t} timeout in milliseconds, the timer actor sends a \code{Timeout} message back after \code{t} milliseconds. The timer must accept multiple \code{Register} messages. Test your code with another actor \code{TestActor} that interacts with the \code{TimerActor}.
 \end{myExercise}
 
 \begin{myExercise}
