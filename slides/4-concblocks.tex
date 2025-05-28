@@ -1037,7 +1037,7 @@ val futFive = Future { ... }
 def getFive  = // : Int
   Await.result(futFive, Duration.inf) 
 def doneFive = // : Future[Int]
-  Await.ready (futFive, 6.seconds)
+  Await.ready (futFive, 10.seconds)
 
 val r1 = getFive // doneFive
 val r2 = getFive // doneFive

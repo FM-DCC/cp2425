@@ -28,7 +28,9 @@ Implement the timer actor with the \code{TimerActor} class. After receiving a \c
 \end{myExercise}
 
 \begin{myExercise}
-Recall the bank account example from the slides on Java's memory model in the theoretical lessons. Implement different bank accounts as separate actors, represented by the \code{AccountActor} class. When an \code{AccountActor} class receives a \code{Send} message, it must transfer the specified amount of money to the target actor. What will happen if either of the actors receives a \code{Kill} message at any point during the money transaction?
+Recall the bank account example from the slides on Java's memory model in the theoretical lessons. \textbf{Implement different bank accounts as separate actors}, represented by the \code{AccountActor} class. When an \code{AccountActor} class receives a \code{Send} message, it must transfer the specified amount of money to the target actor. What will happen if either of the actors receives a message during the money transactions that will trigger an exception?
+
+% receives a \code{Kill} message at any point during the money transaction?
 \end{myExercise}
 
 \begin{myExercise}
