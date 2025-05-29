@@ -27,6 +27,8 @@ The goal of this course is to introduce students to the fundamental theoretic an
 [P] Continuation of exercises on concurrency building blocks, using atomic variables and lazy concepts ([ex-concblocks.pdf](exercises/ex-concblocks.pdf))
 - __22 May 25__: [T] Concurrent structures: thread-safe queues and maps ([4-concblocks.pdf, slides 28-36](slides/4-concblocks.pdf)); Actor in Akka: creation, execution, and behaviour ([5-actors.pdf, slides 1-15](slides/5-actors.pdf)).  
 [P] Recalling atomic variables ([ex-concblocks.pdf](exercises/ex-concblocks.pdf)); deploying actors in Akka ([ex-actors.pdf](exercises/ex-actors.pdf)]); support for the [practical assignment](exercises/cp-project-2425.pdf).
+- __29 May 25__:[T] Futures and promises: creating, using, poling, and composing futures. Actors in Akka: actor hierarchy amd relation with CCS ([5-actors.pdf, slides 20-32](slides/5-actors.pdf)).  
+[P] Exercises on Futures & Promises ([ex-futures.pdf](exercises/ex-futures.pdf)); deploying actors in Akka ([ex-actors.pdf](exercises/ex-actors.pdf)]); support for the [practical assignment](exercises/cp-project-2425.pdf). 
 
 
 <!-- 
